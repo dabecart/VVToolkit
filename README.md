@@ -1,4 +1,4 @@
-# <img src="res/creationFiles/Logo.png" alt="drawing" width="20%"/> Verification and Validation Toolkit 
+# Verification and Validation Toolkit 
 
 *By [@dabecart](https://www.dabecart.net/en/).*
 
