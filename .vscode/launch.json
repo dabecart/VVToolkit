@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        // Press F5 to launch the project.
+        "name": "Python Debugger: Project",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "src/Main.py",
+        "console": "integratedTerminal"
+      }
+    ]
+  }
