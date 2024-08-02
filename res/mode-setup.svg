@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="project-new-svgrepo-com.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.508125"
+     inkscape:cx="1137.5154"
+     inkscape:cy="605.16605"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="Page-1" />
+  <title
+     id="title1">project-new</title>
+  <g
+     id="Page-1"
+     stroke="none"
+     stroke-width="1"
+     fill="#000000"
+     fill-rule="evenodd">
+    <g
+       id="Combined-Shape"
+       fill="#000000"
+       transform="translate(64.000000, 34.346667)" />
+    <path
+       id="path1"
+       style="stroke:none;stroke-opacity:1;fill:#17e5ae;fill-opacity:1"
+       d="M 298.66625 264.31958 L 298.66625 328.31958 L 234.66625 328.31958 L 234.66625 370.98708 L 298.66625 370.98583 L 298.66625 434.98708 L 341.33375 434.98708 L 341.3325 370.98583 L 405.33375 370.98708 L 405.33375 328.31958 L 341.3325 328.31958 L 341.33375 264.31958 L 298.66625 264.31958 z "
+       transform="translate(64,34.346667)" />
+    <path
+       id="path2"
+       style="stroke:none;stroke-opacity:1;fill-opacity:1"
+       d="M 192 -0.000417 L 0 110.85083 L 0 332.55333 L 192 443.40458 L 213.3325 431.08833 L 213.3325 231.55458 L 341.3325 157.65458 L 341.3325 242.98583 L 384 242.98583 L 384 110.85083 L 192 -0.000417 z M 192 49.267083 L 317.86625 121.93583 L 192 194.60583 L 66.13375 121.93583 L 192 49.267083 z M 42.66625 157.65458 L 170.66625 231.55458 L 170.66625 381.81958 L 42.66625 307.91958 L 42.66625 157.65458 z "
+       transform="translate(64,34.346667)" />
+  </g>
+</svg>

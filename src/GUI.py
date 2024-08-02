@@ -12,9 +12,9 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QMessageBox, QFileDialog
+    QMainWindow, QLabel, QMessageBox, QFileDialog, QWidget, QSizePolicy, QToolBar
 )
-from PyQt6.QtGui import QIcon, QPalette
+from PyQt6.QtGui import QIcon, QPalette, QAction
 
 from typing import Optional
 
@@ -36,10 +36,11 @@ class ItemTable(QMainWindow):
         # Items read from the file.
         self.items = []
         # Field to store if the file is not saved.
-        self.unsavedChanges = False
+        self.unsavedChanges : bool = False
         # Field to save the currently opened file.
         self.currentFile: Optional[str] = None
-
+        # Mode of the current program.
+        self.currentMode : str = 'setup'
         # Check if the color is closer to black (dark mode) or white (light mode)
         color = self.palette().color(QPalette.ColorRole.Window)
         brightness = (color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114) / 255
@@ -115,10 +116,27 @@ class ItemTable(QMainWindow):
         programSettAction.setShortcut("Ctrl+R")
         programSettAction.setStatusTip("Configure the program behavior.")
         programSettAction.triggered.connect(self.changeConfig)
+        
+        settingsMenu.addSeparator()
+
+        self.setupModeAction = settingsMenu.addAction('&SETUP mode')
+        self.setupModeAction.setObjectName('SETUP_action')
+        self.setupModeAction.setStatusTip("Change to SETUP mode.")
+        self.setupModeAction.triggered.connect(lambda : self.changeMode('setup'))
+
+        self.buildModeAction = settingsMenu.addAction('&BUILD mode')
+        self.buildModeAction.setObjectName('BUILD_action')
+        self.buildModeAction.setStatusTip("Change to BUILD mode.")
+        self.buildModeAction.triggered.connect(lambda : self.changeMode('build'))
+
+        self.testModeAction = settingsMenu.addAction('&TEST mode')
+        self.testModeAction.setObjectName('TEST_action')
+        self.testModeAction.setStatusTip("Change to TEST mode.")
+        self.testModeAction.triggered.connect(lambda : self.changeMode('test'))
 
         helpMenu = menubar.addMenu('&Help')
         aboutAction = helpMenu.addAction('&About')
-        aboutAction.setShortcut("Ctrl+H")
+        aboutAction.setShortcut("F1")
         aboutAction.setStatusTip("Get help and info about this program.")
 
         # Add icons to all actions.
@@ -133,32 +151,82 @@ class ItemTable(QMainWindow):
             [removeItemAction,      ':item-remove'],    
             [duplicateItemAction,   ':item-duplicate'],        
             [programSettAction,     ':settings-program'],    
-            [aboutAction,           ':help-about']
+            [aboutAction,           ':help-about'],
+            [self.setupModeAction,       ':mode-setup'],
+            [self.buildModeAction,       ':mode-build'],
+            [self.testModeAction,        ':mode-test'],
         ]
         self.redrawIcons(self.config)
 
         # Tool bar
         fileToolBar = self.addToolBar('File')
+        fileToolBar.setMovable(False)
         fileToolBar.addAction(newAction)
         fileToolBar.addAction(openAction)
         fileToolBar.addAction(saveAction)
 
         editToolBar = self.addToolBar('Edit')
+        editToolBar.setMovable(False)
         editToolBar.addAction(undoAction)
         editToolBar.addAction(redoAction)
 
-        settingsToolBar = self.addToolBar('Edit')
+        settingsToolBar = self.addToolBar('Settings')
+        settingsToolBar.setObjectName('Settings Toolbar')
+        settingsToolBar.setMovable(False)
         settingsToolBar.addAction(programSettAction)
+
+        # Spacer to move the MODE buttons to the right.
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        settingsToolBar.addWidget(spacer)
+
+        settingsToolBar.addAction(self.setupModeAction)
+        settingsToolBar.addAction(self.buildModeAction)
+        settingsToolBar.addAction(self.testModeAction)
 
         # Bottom status bar
         self.statusBar = self.statusBar()
-        self.statusBar.showMessage("Ready", 3000)
+        self.statusBar.showMessage("Ready.", 3000)
         self.statusBarPermanent = QLabel("")
         self.statusBar.addPermanentWidget(self.statusBarPermanent)
 
         self.setupWidget = SetupWidget(self)
         self.setupWidget.hide()
         self.setCentralWidget(self.setupWidget)
+
+    def changeMode(self, mode : str):
+        if self.currentFile is None:
+            self.statusBar.showMessage("Open a file first to change mode.", 3000)
+            return
+        
+        self.changeMenuBarWidgetButton(self.setupModeAction, False)
+        self.changeMenuBarWidgetButton(self.buildModeAction, False)
+        self.changeMenuBarWidgetButton(self.testModeAction, False)
+
+        match mode:
+            case 'setup': 
+                self.changeMenuBarWidgetButton(self.setupModeAction, True)
+            case 'build': 
+                self.changeMenuBarWidgetButton(self.buildModeAction, True)
+            case 'test': 
+                self.changeMenuBarWidgetButton(self.testModeAction, True)
+            case _: 
+                print("Unexpected mode.")
+                return
+
+        self.currentMode = mode
+
+    def changeMenuBarWidgetButton(self, action, selected : bool):
+        toolbar = self.findChild(QToolBar, "Settings Toolbar")
+        if toolbar:
+            modeWidget = toolbar.widgetForAction(action)
+            if modeWidget:
+                if selected:
+                    modeWidget.setStyleSheet(f"background-color: #6f7026;"
+                                             "border-radius: 4px;")          
+                else:
+                    current_color = self.palette().color(QPalette.ColorRole.Window)
+                    modeWidget.setStyleSheet(f"background-color: {current_color.name()};")     
 
     def changeConfig(self):
         settingsWindow = SettingsWindow(self.config, self)
@@ -179,10 +247,12 @@ class ItemTable(QMainWindow):
             if reply == QMessageBox.StandardButton.Yes:
                 self.saveFile()
 
-        self.currentFile = "Unnamed.json"
+        self.currentFile = "Unnamed.vvf"
         self.centralWidget().runAction('populate-table', None)
 
-        self.statusBar.showMessage("New file created", 3000)
+        self.statusBar.showMessage("New file created.", 3000)
+
+        self.changeMode(self.currentMode)
 
         self.unsavedChanges = True
 
@@ -199,7 +269,7 @@ class ItemTable(QMainWindow):
             if reply == QMessageBox.StandardButton.Yes:
                 self.saveFile()
 
-        fileName, _ = QFileDialog.getOpenFileName(self, 'Open File', '', 'JSON Files (*.json)')
+        fileName, _ = QFileDialog.getOpenFileName(self, 'Open File', '', 'VVF Files (*.vvf)')
         if fileName:
             try:
                 self.items = loadItemsFromFile(fileName)
@@ -208,7 +278,9 @@ class ItemTable(QMainWindow):
 
                 self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
 
-                self.statusBar.showMessage("File opened", 3000)
+                self.statusBar.showMessage("File opened.", 3000)
+
+                self.changeMode(self.currentMode)
             except Exception as e:
                 QMessageBox.critical(self, 'Error', f'Could not open file: {e}')
         
@@ -220,8 +292,8 @@ class ItemTable(QMainWindow):
             return False
 
         try:
-            if self.currentFile == "Unnamed.json":
-                fileName, _ = QFileDialog.getSaveFileName(self, 'Save File', '', 'JSON Files (*.json)')
+            if self.currentFile == "Unnamed.vvf":
+                fileName, _ = QFileDialog.getSaveFileName(self, 'Save File', '', 'VVF Files (*.vvf)')
                 if fileName:
                     self.currentFile = fileName
                 else:
@@ -230,7 +302,7 @@ class ItemTable(QMainWindow):
             saveItemsToFile(self.items, self.currentFile)
             self.unsavedChanges = False
             self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
-            self.statusBar.showMessage("File saved", 3000)
+            self.statusBar.showMessage("File saved.", 3000)
             return True
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Could not save file: {e}')
@@ -253,7 +325,7 @@ class ItemTable(QMainWindow):
         self.currentFile = None
         self.unsavedChanges = False
 
-        self.statusBar.showMessage("File closed", 3000)
+        self.statusBar.showMessage("File closed.", 3000)
 
     def closeEvent(self, event):
         if self.unsavedChanges:

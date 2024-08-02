@@ -8,6 +8,9 @@
     <file alias="item-add">item-add.svg</file>
     <file alias="item-remove">item-remove.svg</file>
     <file alias="item-duplicate">item-duplicate.svg</file>
+    <file alias="mode-setup">mode-setup.svg</file>
+    <file alias="mode-build">mode-build.svg</file>
+    <file alias="mode-test">mode-test.svg</file>
     <file alias="quit">quit.svg</file>
     <file alias="help-about">help-about.svg</file>
     <file alias="settings-program">settings-program.svg</file>

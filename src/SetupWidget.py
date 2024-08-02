@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QCheckBox, QVBoxLayout, QWidget, QHeaderView,
     QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton
 )
-from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtCore import Qt, QEvent, QTimer
 from PyQt6.QtGui import QIntValidator
 
 from copy import deepcopy
@@ -76,12 +76,21 @@ class SetupWidget(QWidget):
 
         # Enable sorting
         self.tableWidget.setSortingEnabled(True)
+
+        # This is so the sorting arrow doesn't get blended with the background in dark mode.
+        if self.parent.config.colorTheme == "dark":
+            self.tableWidget.setStyleSheet("""
+            QHeaderView::section {
+                background-color: #666666;
+            }
+            """)
         
         # Connect cell click to show details
         self.currentRow = 0
         self.tableWidget.cellClicked.connect(self.showDetails)
         self.tableWidget.cellChanged.connect(self.updateDetailsFromTable)
         self.tableWidget.currentCellChanged.connect(self.updateDetailsFromSelection)
+        self.tableWidget.resizeEvent = self.onResizeWindow
         self.tableWidget.viewport().installEventFilter(self)
 
         # Create the details widget with a header
@@ -146,11 +155,23 @@ class SetupWidget(QWidget):
 
         self.tableWidget.horizontalHeader().setSortIndicatorShown(True)
         self.tableWidget.horizontalHeader().setSectionsClickable(True)
-        # TODO: Add Interactive Resize Mode with initial column width percentages.
-        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        
+        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+
+        # This gives some time to the UI to update.
+        QTimer.singleShot(0, self.updateColumnWidth)
+
         # When opening, the cells get populated and think that a change has happened. Not the case.
         self.parent.unsavedChanges = False
+
+    def onResizeWindow(self, event):
+        self.updateColumnWidth()
+        event.accept()
+
+    def updateColumnWidth(self):
+        columnWidthPercentages = [0.05, 0.5, 0.2, 0.15, 0.1]
+        tableWidth = self.tableWidget.viewport().width()
+        for i, width in enumerate(columnWidthPercentages):
+            self.tableWidget.setColumnWidth(i, int(tableWidth * width))
 
     def showDetails(self, row, column = -1):
         self.currentRow = row
@@ -355,7 +376,7 @@ class SetupWidget(QWidget):
                         selectedItem = it
                         break
             else:
-                self.parent.statusBar.showMessage("Nothing to remove", 3000)
+                self.parent.statusBar.showMessage("Nothing to remove.", 3000)
                 return
 
         # Get the row of the item from the table by its ID.
