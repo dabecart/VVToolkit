@@ -38,6 +38,7 @@ class SetupWidget(QWidget):
 
         layout = QVBoxLayout()
         self.setLayout(layout)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Create the main splitter
         self.splitter = QSplitter(Qt.Orientation.Vertical)
@@ -45,16 +46,19 @@ class SetupWidget(QWidget):
 
         # Create a widget for the buttons
         buttonWidget = QWidget()
-        buttonLayout = QHBoxLayout()
-        buttonWidget.setLayout(buttonLayout)
+        buttonLayout = QHBoxLayout(buttonWidget)
 
         self.addButton = QPushButton(createIcon(':item-add', "green"), "Add Item")
-        buttonLayout.addWidget(self.addButton)
-        self.addButton.clicked.connect(lambda : self.runAction('item-add', parent.undoStack))
+        self.addButton.clicked.connect(lambda : self.runAction('item-add', self.parent.undoStack))
+        self.addButton.setFixedHeight(30)
 
         self.removeButton = QPushButton(createIcon(':item-remove', "red"), "Remove Item")
+        self.removeButton.clicked.connect(lambda : self.runAction('item-remove', self.parent.undoStack))
+        self.removeButton.setFixedHeight(30)
+
+        buttonLayout.addWidget(self.addButton)
         buttonLayout.addWidget(self.removeButton)
-        self.removeButton.clicked.connect(lambda : self.runAction('item-remove', parent.undoStack))
+        buttonLayout.addStretch()
 
         # Create the table widget
         self.tableWidget = QTableWidget()
@@ -76,6 +80,10 @@ class SetupWidget(QWidget):
 
         # Enable sorting
         self.tableWidget.setSortingEnabled(True)
+
+        self.tableWidget.horizontalHeader().setSortIndicatorShown(True)
+        self.tableWidget.horizontalHeader().setSectionsClickable(True)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
 
         # This is so the sorting arrow doesn't get blended with the background in dark mode.
         if self.parent.config.colorTheme == "dark":
@@ -135,7 +143,7 @@ class SetupWidget(QWidget):
         self.categoryField.lineEdit.textEdited.connect(self.updateTableFromDetails)
         self.repetitionsField.lineEdit.textEdited.connect(self.updateTableFromDetails)
         self.enabledField.toggled.connect(self.updateTableFromDetails)
-        self.codeField.textEdit.textChanged.connect(self.updateTableFromDetails)
+        self.codeField.textChanged.connect(self.updateTableFromDetails)
     
     def populateTable(self):
         self.tableWidget.setRowCount(len(self.parent.items))
@@ -152,10 +160,6 @@ class SetupWidget(QWidget):
             checkbox.setChecked(item.enabled)
             checkbox.stateChanged.connect(lambda state, associatedItem=item: self.updateEnabledCheckboxFromTable(associatedItem, state))
             self.tableWidget.setCellWidget(row, 4, checkbox)
-
-        self.tableWidget.horizontalHeader().setSortIndicatorShown(True)
-        self.tableWidget.horizontalHeader().setSectionsClickable(True)
-        self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
 
         # This gives some time to the UI to update.
         QTimer.singleShot(0, self.updateColumnWidth)

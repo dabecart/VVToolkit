@@ -15,5 +15,11 @@
     <file alias="help-about">help-about.svg</file>
     <file alias="settings-program">settings-program.svg</file>
     <file alias="logo">logo.ico</file>
+    <file alias="arrow-up">arrow-up.svg</file>
+    <file alias="arrow-down">arrow-down.svg</file>
+    <file alias="arrow-left">arrow-left.svg</file>
+    <file alias="arrow-right">arrow-right.svg</file>
+    <file alias="run">run.svg</file>
+    <file alias="clear">clear.svg</file>
 </qresource>
 </RCC>

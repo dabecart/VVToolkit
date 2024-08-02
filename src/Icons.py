@@ -20,9 +20,13 @@ from typing import Union
 
 from SettingsWindow import ProgramConfig
 
+# Don't remove this "unused" import, contains the resource images.
 import ResourcePacket
 
-def createIcon(icon_path : str, theme : Union[ProgramConfig, str]):
+def createIcon(icon_path : str, theme : Union[ProgramConfig, str, None] = None):
+    if theme is None:
+        return QIcon(icon_path)
+    
     if type(theme) is ProgramConfig:
         color : str = theme.colorTheme
     elif type(theme) is str:
@@ -35,9 +39,9 @@ def createIcon(icon_path : str, theme : Union[ProgramConfig, str]):
             color = "black"
         case 'dark':
             color = "white"
-    return QIcon(recolor_svg(icon_path, color))
+    return QIcon(recolorSVG(icon_path, color))
 
-def recolor_svg(icon_path, color):
+def recolorSVG(icon_path, color):
     # Load the SVG data from the resource
     file = QFile(icon_path)
     if not file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):

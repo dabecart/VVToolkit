@@ -17,23 +17,16 @@ from PyQt6.QtWidgets import (QWidget, QTextEdit, QHBoxLayout)
 import re
 from typing import Optional
 
-class CodeTextField(QWidget):
+class CodeTextField(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.textEdit = QTextEdit(self)
         # Set a new console font family but keep the current size
-        self.textEdit.setFont(QFont("Courier New", self.textEdit.font().pointSize()))
-        self.highlighter = BashHighlighter(self.textEdit.document())
+        self.setFont(QFont("Courier New", self.font().pointSize()))
+        self.highlighter = BashHighlighter(self.document())
         
-        self.layout.addWidget(self.textEdit)
-        self.setLayout(self.layout)
-
     def getCommand(self, validateCommand : bool) -> Optional[str]:
-        commandText = self.textEdit.toPlainText().strip()
+        commandText = self.toPlainText().strip()
         if validateCommand and not self._validateCommand(commandText):
             return None
         return commandText
@@ -46,9 +39,6 @@ class CodeTextField(QWidget):
                 return False
         return True
     
-    def setText(self, text):
-        self.textEdit.setText(text)
-
 class BashHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
         super().__init__(parent)

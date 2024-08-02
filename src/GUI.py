@@ -12,9 +12,9 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QMessageBox, QFileDialog, QWidget, QSizePolicy, QToolBar
+    QMainWindow, QLabel, QMessageBox, QFileDialog, QWidget, QSizePolicy, QToolBar, QStackedWidget
 )
-from PyQt6.QtGui import QIcon, QPalette, QAction
+from PyQt6.QtGui import QIcon, QPalette
 
 from typing import Optional
 
@@ -22,6 +22,7 @@ from DataFields import loadItemsFromFile, saveItemsToFile;
 from SettingsWindow import ProgramConfig, SettingsWindow
 from Icons import createIcon
 from SetupWidget import SetupWidget
+from BuildWidget import BuildWidget
 
 class ItemTable(QMainWindow):
     def __init__(self):
@@ -40,7 +41,7 @@ class ItemTable(QMainWindow):
         # Field to save the currently opened file.
         self.currentFile: Optional[str] = None
         # Mode of the current program.
-        self.currentMode : str = 'setup'
+        self.currentMode : str = None
         # Check if the color is closer to black (dark mode) or white (light mode)
         color = self.palette().color(QPalette.ColorRole.Window)
         brightness = (color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114) / 255
@@ -99,17 +100,17 @@ class ItemTable(QMainWindow):
         addItemAction = editMenu.addAction('&Add item')
         addItemAction.setShortcut("Alt+N")
         addItemAction.setStatusTip("Add an item to the list")
-        addItemAction.triggered.connect(lambda : self.centralWidget().runAction('item-add', self.undoStack))
+        addItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-add', self.undoStack))
 
         removeItemAction = editMenu.addAction('&Remove item')
         removeItemAction.setShortcut("Del")
         removeItemAction.setStatusTip("Remove an item from the list")
-        removeItemAction.triggered.connect(lambda : self.centralWidget().runAction('item-remove', self.undoStack))
+        removeItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-remove', self.undoStack))
 
         duplicateItemAction = editMenu.addAction('&Duplicate item')
         duplicateItemAction.setShortcut("Alt+D")
         duplicateItemAction.setStatusTip("Duplicate an item from the list")
-        duplicateItemAction.triggered.connect(lambda : self.centralWidget().runAction('item-duplicate', self.undoStack))
+        duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', self.undoStack))
 
         settingsMenu = menubar.addMenu('&Settings')
         programSettAction = settingsMenu.addAction('&Program settings')
@@ -120,17 +121,14 @@ class ItemTable(QMainWindow):
         settingsMenu.addSeparator()
 
         self.setupModeAction = settingsMenu.addAction('&SETUP mode')
-        self.setupModeAction.setObjectName('SETUP_action')
         self.setupModeAction.setStatusTip("Change to SETUP mode.")
         self.setupModeAction.triggered.connect(lambda : self.changeMode('setup'))
 
         self.buildModeAction = settingsMenu.addAction('&BUILD mode')
-        self.buildModeAction.setObjectName('BUILD_action')
         self.buildModeAction.setStatusTip("Change to BUILD mode.")
         self.buildModeAction.triggered.connect(lambda : self.changeMode('build'))
 
         self.testModeAction = settingsMenu.addAction('&TEST mode')
-        self.testModeAction.setObjectName('TEST_action')
         self.testModeAction.setStatusTip("Change to TEST mode.")
         self.testModeAction.triggered.connect(lambda : self.changeMode('test'))
 
@@ -191,12 +189,22 @@ class ItemTable(QMainWindow):
         self.statusBar.addPermanentWidget(self.statusBarPermanent)
 
         self.setupWidget = SetupWidget(self)
-        self.setupWidget.hide()
-        self.setCentralWidget(self.setupWidget)
+        self.buildWidget = BuildWidget(self)
+
+        centralWidget = QStackedWidget()
+        centralWidget.addWidget(self.setupWidget)
+        centralWidget.addWidget(self.buildWidget)
+        self.setCentralWidget(centralWidget)
+        self.centralWidget().hide()
+
+        self.currentWidget = None
 
     def changeMode(self, mode : str):
         if self.currentFile is None:
             self.statusBar.showMessage("Open a file first to change mode.", 3000)
+            return
+        
+        if self.currentMode == mode:
             return
         
         self.changeMenuBarWidgetButton(self.setupModeAction, False)
@@ -205,8 +213,13 @@ class ItemTable(QMainWindow):
 
         match mode:
             case 'setup': 
+                self.centralWidget().setCurrentIndex(0)
+                self.currentWidget = self.setupWidget
                 self.changeMenuBarWidgetButton(self.setupModeAction, True)
             case 'build': 
+                self.centralWidget().setCurrentIndex(1)
+                self.currentWidget = self.buildWidget
+                self.currentWidget.runAction('populate-table', None)
                 self.changeMenuBarWidgetButton(self.buildModeAction, True)
             case 'test': 
                 self.changeMenuBarWidgetButton(self.testModeAction, True)
@@ -248,7 +261,10 @@ class ItemTable(QMainWindow):
                 self.saveFile()
 
         self.currentFile = "Unnamed.vvf"
-        self.centralWidget().runAction('populate-table', None)
+
+        self.changeMode('setup')
+
+        self.currentWidget.runAction('populate-table', None)
 
         self.statusBar.showMessage("New file created.", 3000)
 
@@ -270,22 +286,25 @@ class ItemTable(QMainWindow):
                 self.saveFile()
 
         fileName, _ = QFileDialog.getOpenFileName(self, 'Open File', '', 'VVF Files (*.vvf)')
-        if fileName:
-            try:
-                self.items = loadItemsFromFile(fileName)
-                self.currentFile = fileName
-                self.centralWidget().runAction('populate-table', None)
-
-                self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
-
-                self.statusBar.showMessage("File opened.", 3000)
-
-                self.changeMode(self.currentMode)
-            except Exception as e:
-                QMessageBox.critical(self, 'Error', f'Could not open file: {e}')
+        if not fileName:
+            return 
         
-            self.centralWidget().show()
+        try:
+            self.items = loadItemsFromFile(fileName)
+            self.currentFile = fileName
 
+            self.changeMode('setup')
+
+            self.currentWidget.runAction('populate-table', None)
+
+            self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
+
+            self.statusBar.showMessage("File opened.", 3000)
+
+            self.centralWidget().show()
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Could not open file: {e}')
+    
     def saveFile(self):
         if not self.currentFile:
             QMessageBox.warning(self, 'No File', 'No file selected. Please open a file first.')
@@ -347,11 +366,11 @@ class ItemTable(QMainWindow):
             self.statusBar.showMessage("Nothing to undo.", 3000)
             return
         action, item = self.undoStack.pop()
-        self.centralWidget().runAction(action, self.redoStack, item)
+        self.currentWidget.runAction(action, self.redoStack, item)
 
     def redo(self):
         if not self.redoStack:
             self.statusBar.showMessage("Nothing to redo.", 3000)
             return
         action, item = self.redoStack.pop()
-        self.centralWidget().runAction(action, self.undoStack, item)
+        self.currentWidget.runAction(action, self.undoStack, item)
