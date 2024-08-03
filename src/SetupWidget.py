@@ -28,7 +28,7 @@ from widgets.CodeTextField import CodeTextField
 from widgets.TableCell import TableCell
 
 from Icons import createIcon
-from SignalBlocker import SignalBlocker
+from tools.SignalBlocker import SignalBlocker
 
 class SetupWidget(QWidget):
     def __init__(self, parent=None):
@@ -252,6 +252,8 @@ class SetupWidget(QWidget):
             elif column == 3:
                 try:
                     item.repetitions = int(self.tableWidget.item(row, column).text())
+                    if len(item.result) != item.repetitions:
+                        item.result.clear()
                 except ValueError:
                     self.tableWidget.item(row, column).setText(str(item.repetitions))
             
@@ -268,7 +270,7 @@ class SetupWidget(QWidget):
         try:
             item.id = int(self.idField.text())
         except ValueError:
-            self.idField.setError("ID must be a number.")
+            self.idField.setError("This field must be a number.")
             return
 
         item.name = self.nameField.text()
@@ -277,16 +279,23 @@ class SetupWidget(QWidget):
 
         try:
             item.repetitions = int(self.repetitionsField.text())
+            # If the number of repetitions is different, clear results.
+            if len(item.result) != item.repetitions:
+                item.result.clear()
         except ValueError:
-            self.repetitionsField.setError("Repetitions must be a number.")
+            self.repetitionsField.setError("This field must be a number.")
             return        
         
         item.enabled = self.enabledField.isChecked()
 
-        item.runcode = self.codeField.getCommand(self.parent.config.validateCommands)
-        if item.runcode is None:
+        inputRunCode = self.codeField.getCommand(self.parent.config.validateCommands)
+        if inputRunCode is None:
             self.parent.statusBar.showMessage("The code is not safe so it's been discarded.", 3000)
-            item.runcode = ""
+        else:
+            # The code has changed, remove the results.
+            if inputRunCode != item.runcode:
+                item.result.clear()
+            item.runcode = inputRunCode
 
         self.tableWidget.item(self.currentRow, 0).setText(str(item.id))
         self.tableWidget.item(self.currentRow, 1).setText(item.name)

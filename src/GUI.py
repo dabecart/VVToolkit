@@ -48,9 +48,9 @@ class ItemTable(QMainWindow):
         self.config.colorTheme = "dark" if  brightness < 0.5 else "light"
 
         # Menu Bar
-        menubar = self.menuBar()
+        self.menubar = self.menuBar()
 
-        fileMenu = menubar.addMenu('&File')
+        fileMenu = self.menubar.addMenu('&File')
 
         newAction = fileMenu.addAction('&New...')
         newAction.setShortcut("Ctrl+N")
@@ -79,7 +79,7 @@ class ItemTable(QMainWindow):
         quitAction.setStatusTip("Quit the application")
         quitAction.triggered.connect(self.close)
 
-        editMenu = menubar.addMenu('&Edit')
+        editMenu = self.menubar.addMenu('&Edit')
 
         # Set up undo action
         self.undoStack = []
@@ -112,7 +112,7 @@ class ItemTable(QMainWindow):
         duplicateItemAction.setStatusTip("Duplicate an item from the list")
         duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', self.undoStack))
 
-        settingsMenu = menubar.addMenu('&Settings')
+        settingsMenu = self.menubar.addMenu('&Settings')
         programSettAction = settingsMenu.addAction('&Program settings')
         programSettAction.setShortcut("Ctrl+R")
         programSettAction.setStatusTip("Configure the program behavior.")
@@ -132,7 +132,7 @@ class ItemTable(QMainWindow):
         self.testModeAction.setStatusTip("Change to TEST mode.")
         self.testModeAction.triggered.connect(lambda : self.changeMode('test'))
 
-        helpMenu = menubar.addMenu('&Help')
+        helpMenu = self.menubar.addMenu('&Help')
         aboutAction = helpMenu.addAction('&About')
         aboutAction.setShortcut("F1")
         aboutAction.setStatusTip("Get help and info about this program.")
@@ -198,6 +198,12 @@ class ItemTable(QMainWindow):
         self.centralWidget().hide()
 
         self.currentWidget = None
+
+    def setEnableToolbars(self, enable : bool):
+        self.menubar.setEnabled(enable)
+        toolbars = self.findChildren(QToolBar)
+        for t in toolbars:
+            t.setEnabled(enable)
 
     def changeMode(self, mode : str):
         if self.currentFile is None:

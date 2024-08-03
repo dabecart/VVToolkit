@@ -11,18 +11,18 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
-from PyQt6.QtWidgets import QMessageBox
-
 from dataclasses import dataclass, asdict, fields, field
 import json
 from typing import List
 import subprocess
-import shlex
+import shlex    # To easily parse the arguments for a console.
+from time import perf_counter
 
 @dataclass
 class ResultCommand:
-    output: str         = field(default="")
-    returnCode : int    = field(default=None)
+    output: str             = field(default="")
+    returnCode : int        = field(default=None)
+    executionTime : float   = field(default=0)
 
 @dataclass
 class Item:
@@ -37,22 +37,19 @@ class Item:
     def __lt__(self, other):
         return self.id < other.id
     
-    def isBeenRun(self) -> bool:
+    def hasBeenRun(self) -> bool:
         return len(self.result) > 0
 
-    def run(self, raiseWarning : bool = False):
-        if self.isBeenRun():
-            if raiseWarning:
-                QMessageBox.critical(self, 'Error', f'Item {self.name} contains results and/or configuration. Please, clear it before running it again.')
-            return
-
+    def run(self):
+        commandArgs = shlex.split(self.runcode)
         for _ in range(self.repetitions):
-            commandArgs = shlex.split(self.runcode)
+            startTime = perf_counter()
             runResult = subprocess.run(commandArgs, stdout=subprocess.PIPE)
+            executionTime = perf_counter() - startTime
             self.result.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
-                                             returnCode=runResult.returncode))
+                                             returnCode=runResult.returncode,
+                                             executionTime=executionTime))
             
-
 def saveItemsToFile(items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
         json.dump([asdict(item) for item in items], file)
@@ -66,8 +63,8 @@ def loadItemsFromFile(filename: str) -> List[Item]:
         for item_dict in items_dict:
             # Filter the dictionary to only include valid fields
             filtered_dict = {k: v for k, v in item_dict.items() if k in item_fields}
-            # # Add missing fields with None
-            # for field in item_fields - filtered_dict.keys():
-            #     filtered_dict[field] = None
+            # Handle the result field.
+            if 'result' in filtered_dict:
+                filtered_dict['result'] = [ResultCommand(**res) for res in filtered_dict['result']]
             items.append(Item(**filtered_dict))
         return items
