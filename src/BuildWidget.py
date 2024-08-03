@@ -36,17 +36,17 @@ class BuildWidget(QWidget):
         topBarLayout = QHBoxLayout(self.topBar)
 
         self.runAllButton = QPushButton(createIcon(':run', self.parent.config), "Run all")
-        self.runAllButton.setToolTip("Runs all test cases without output.")
+        self.runAllButton.setStatusTip("Runs all test cases without output.")
         self.runAllButton.clicked.connect(lambda : self.runAction('run-all-items', None))
         self.runAllButton.setFixedHeight(30)
 
         self.clearAllButton = QPushButton(createIcon(':clear', self.parent.config), "Clear all")
-        self.clearAllButton.setToolTip("Clears the outputs of all test cases.")
+        self.clearAllButton.setStatusTip("Clears the outputs of all test cases.")
         self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-items', None))
         self.clearAllButton.setFixedHeight(30)
 
         self.categoryCombo = QComboBox()
-        self.categoryCombo.setToolTip("Select the category to filter the test cases.")
+        self.categoryCombo.setStatusTip("Select the category to filter the test cases.")
         self.categoryCombo.setCurrentIndex(0)
         self.categoryCombo.setFixedHeight(30)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
@@ -119,7 +119,6 @@ class BuildWidget(QWidget):
             case _:
                 return item.category == categoryFilter
 
-
     def runAction(self, action, actionStack, *args):
         def onFinishRun(args):
             args.topBar.setEnabled(True)
@@ -162,7 +161,8 @@ class BuildWidget(QWidget):
             boxes = []
             for i in range(self.scrollLayout.count()):
                 widget : CollapsibleBox = self.scrollLayout.itemAt(i).widget()
-                if widget.item.enabled and widget.item.repetitions > 0:
+                # Only run those that are enabled and are shown on screen.
+                if widget.item.isEnabled() and self._filterItemByCategory(widget.item, self.categoryCombo.currentText()):
                     boxes.append([widget, self])
             
             self.topBar.setEnabled(False)
@@ -198,7 +198,10 @@ class BuildWidget(QWidget):
                 return
             
             for i in range(self.scrollLayout.count()):
-                self.runAction('clear-item', actionStack, self.scrollLayout.itemAt(i).widget()) 
+                widget = self.scrollLayout.itemAt(i).widget()
+                # Only clean those shown on screen.
+                if self._filterItemByCategory(widget.item, self.categoryCombo.currentText()):
+                    self.runAction('clear-item', actionStack, widget) 
 
         elif action == 'populate-table':
                 self.populateTable(None)

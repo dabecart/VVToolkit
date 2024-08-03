@@ -13,7 +13,7 @@
 
 from PyQt6.QtWidgets import (
     QTableWidget, QCheckBox, QVBoxLayout, QWidget, QHeaderView,
-    QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton
+    QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton, QTableWidgetItem
 )
 from PyQt6.QtCore import Qt, QEvent, QTimer
 from PyQt6.QtGui import QIntValidator
@@ -49,10 +49,12 @@ class SetupWidget(QWidget):
         buttonLayout = QHBoxLayout(buttonWidget)
 
         self.addButton = QPushButton(createIcon(':item-add', "green"), "Add Item")
+        self.addButton.setStatusTip('Add a new item to the table.')
         self.addButton.clicked.connect(lambda : self.runAction('item-add', self.parent.undoStack))
         self.addButton.setFixedHeight(30)
 
         self.removeButton = QPushButton(createIcon(':item-remove', "red"), "Remove Item")
+        self.removeButton.setStatusTip('Remove the selected item from the table.')
         self.removeButton.clicked.connect(lambda : self.runAction('item-remove', self.parent.undoStack))
         self.removeButton.setFixedHeight(30)
 
@@ -120,21 +122,27 @@ class SetupWidget(QWidget):
         # Add fields to the form layout
         self.idField = LabeledLineEdit(validator=QIntValidator())
         self.idField.lineEdit.textChanged.connect(self.validateID)
+        self.idField.setStatusTip('Set the ID/order of execution of this test case.')
         self.formLayout.addRow("ID:", self.idField)
 
         self.nameField = LabeledLineEdit()
+        self.nameField.setStatusTip('Set the name of this test case.')
         self.formLayout.addRow("Name:", self.nameField)
 
         self.categoryField = LabeledLineEdit()
+        self.categoryField.setStatusTip('Set the group this test case belong to.')
         self.formLayout.addRow("Category:", self.categoryField)
 
         self.repetitionsField = LabeledLineEdit(validator=QIntValidator())
+        self.repetitionsField.setStatusTip('Set the number of times this test\' code will be run for.')
         self.formLayout.addRow("Repetitions:", self.repetitionsField)
 
         self.enabledField = QCheckBox()
+        self.enabledField.setStatusTip('Enables/disables this test case during the build process.')
         self.formLayout.addRow("Enabled:", self.enabledField)
 
         self.codeField = CodeTextField()
+        self.codeField.setStatusTip('Set the code to run for this test case.')
         self.formLayout.addRow("Command:", self.codeField)
 
         # Connect changes in the detail fields to update the table
@@ -148,7 +156,17 @@ class SetupWidget(QWidget):
     def populateTable(self):
         self.tableWidget.setRowCount(len(self.parent.items))
         self.tableWidget.setColumnCount(5)
-        self.tableWidget.setHorizontalHeaderLabels(["ID", "Name", "Category", "Repetitions", "Enabled"])
+        columnHeaders = ["ID", "Name", "Category", "Repetitions", "Enabled"]
+        columnStatusTips = ['The ID/order of execution of this test case.',
+            'The name or descriptor of this test case.',
+            'The group of this test case.',
+            'The number of times the code of this test case will be run.',
+            'Enables/disables this test case during the build process.']
+        
+        for col, header in enumerate(columnHeaders):
+            item = QTableWidgetItem(header)
+            item.setStatusTip(columnStatusTips[col])
+            self.tableWidget.setHorizontalHeaderItem(col, item)
 
         for row, item in enumerate(self.parent.items):
             self.tableWidget.setItem(row, 0, TableCell(str(item.id), item))
@@ -251,10 +269,16 @@ class SetupWidget(QWidget):
                     item.category = self.tableWidget.item(row, column).text()
             elif column == 3:
                 try:
-                    item.repetitions = int(self.tableWidget.item(row, column).text())
+                    inputInt = int(self.tableWidget.item(row, column).text())
+                except ValueError:
+                    inputInt = None
+
+                if inputInt is not None and inputInt >= 0:
+                    item.repetitions = inputInt
+                    # If the number of repetitions is different, clear results.
                     if len(item.result) != item.repetitions:
                         item.result.clear()
-                except ValueError:
+                else:
                     self.tableWidget.item(row, column).setText(str(item.repetitions))
             
         self.parent.unsavedChanges = True
@@ -266,12 +290,14 @@ class SetupWidget(QWidget):
         item = self.getItemByRow(self.currentRow)
         if item is None:
             return
-
-        try:
-            item.id = int(self.idField.text())
-        except ValueError:
-            self.idField.setError("This field must be a number.")
-            return
+        
+        inputID = self.idField.text()
+        if inputID != str(item.id):
+            if self.checkIDOk(inputID) == 0: 
+                item.id = inputID
+            else:
+                self.idField.setError("This field must be a number.")
+                return
 
         item.name = self.nameField.text()
         
@@ -324,6 +350,8 @@ class SetupWidget(QWidget):
             except ValueError:
                 return 1
 
+        if newID < 0: return 3
+
         for item in self.parent.items:
             if item.id == newID:
                 return 2
@@ -331,10 +359,15 @@ class SetupWidget(QWidget):
 
     def validateID(self):
         newID = self.idField.text()
+        if newID == str(self.getItemByRow(self.currentRow).id):
+            self.idField.clearError()
+            return 
+        
         match self.checkIDOk(newID):
             case 0: self.idField.clearError()
             case 1: self.idField.setError("This ID is not a number.")
             case 2: self.idField.setError("This ID is already in use.")
+            case 3: self.idField.setError("The ID must be positive or zero.")
 
     def deselectAll(self):
         self.tableWidget.clearSelection()

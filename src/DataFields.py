@@ -39,6 +39,9 @@ class Item:
     
     def hasBeenRun(self) -> bool:
         return len(self.result) > 0
+    
+    def isEnabled(self) -> bool:
+        return self.enabled and self.repetitions > 0
 
     def run(self):
         commandArgs = shlex.split(self.runcode)
