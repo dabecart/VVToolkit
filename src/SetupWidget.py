@@ -183,9 +183,6 @@ class SetupWidget(QWidget):
         # This gives some time to the UI to update.
         QTimer.singleShot(0, self.updateColumnWidth)
 
-        # When opening, the cells get populated and think that a change has happened. Not the case.
-        self.parent.unsavedChanges = False
-
     def onResizeWindow(self, event):
         self.updateColumnWidth()
         event.accept()
@@ -282,8 +279,6 @@ class SetupWidget(QWidget):
                 else:
                     self.tableWidget.item(row, column).setText(str(item.repetitions))
             
-        self.parent.unsavedChanges = True
-        
     def updateTableFromDetails(self):
         # Update error messages.
         self.checkEmptyFields()
@@ -330,8 +325,6 @@ class SetupWidget(QWidget):
         self.tableWidget.item(self.currentRow, 3).setText(str(item.repetitions))
         self.tableWidget.cellWidget(self.currentRow, 4).setChecked(item.enabled)
         
-        self.parent.unsavedChanges = True
-
     def updateEnabledCheckboxFromTable(self, associatedItem, state):
         associatedItem.enabled = (state == Qt.CheckState.Checked.value)
         self.enabledField.setChecked(associatedItem.enabled)
@@ -408,8 +401,6 @@ class SetupWidget(QWidget):
         self.tableWidget.setCellWidget(row, 4, checkbox)
         self.tableWidget.scrollToBottom()
 
-        self.parent.unsavedChanges = True
-
         return newItem
 
     def removeItem(self, selectedItem):
@@ -437,7 +428,6 @@ class SetupWidget(QWidget):
                 break
 
         self.parent.items.remove(selectedItem)
-        self.parent.unsavedChanges = True
         return selectedItem
 
     def duplicateItem(self):
@@ -453,8 +443,6 @@ class SetupWidget(QWidget):
             dupeItem.id = max(it.id for it in self.parent.items) + 1 if self.parent.items else 0
             self.addItem(dupeItem)
 
-            self.parent.unsavedChanges = True
-            
             return dupeItem
         return None
 

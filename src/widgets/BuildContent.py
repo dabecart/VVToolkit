@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QTextEdit, QComboBox, QLineEdit)
 from PyQt6.QtCore import Qt
 
-from DataFields import Item
+from DataFields import Item, Operation, ValidationCommand
 from widgets.CodeTextField import CodeTextField
 
 class BuildContent(QWidget):
@@ -69,18 +69,28 @@ class BuildContent(QWidget):
         self.checkModeCombo = QComboBox()
         self.checkModeCombo.setStatusTip('Select which type of verification will be used for this test case.')
         self.checkModeCombo.setFixedHeight(30)
-        self.checkModeCombo.addItems(["Same output", "Conditional output"])
+        self.checkModeCombo.addItems(Operation.operations)
+        self.checkModeCombo.setCurrentIndex(self.item.validationCmd.operation)
         self.checkModeCombo.currentTextChanged.connect(self.onCheckingModeChanged)
 
         self.operatorCombo = QComboBox()
         self.operatorCombo.setStatusTip('Select the operation for the validation process.')
         self.operatorCombo.setFixedHeight(30)
-        self.operatorCombo.addItems(["==", "<>", "<", ">", "<=", ">="])
-        self.operatorCombo.setVisible(False)
+        self.operatorCombo.addItems(ValidationCommand.operators)
+        try:
+            self.operatorCombo.setCurrentIndex(ValidationCommand.operators.index(self.item.validationCmd.operator))
+        except ValueError:
+            print(f"Item {self.item.id} has an invalid operator {self.item.validationCmd.operator}")
+        self.operatorCombo.currentTextChanged.connect(self.onOperatorChanged)
 
         self.operatorValueEdit = QLineEdit()
         self.operatorValueEdit.setStatusTip('The value used for the validation process.')
-        self.operatorValueEdit.setVisible(False)
+        self.operatorValueEdit.textChanged.connect(self.onOperatorValueChanged)
+        self.operatorValueEdit.setText(self.item.validationCmd.operatorVal)
+
+        if self.item.validationCmd.operation == Operation.SAME:
+            self.operatorCombo.setVisible(False)
+            self.operatorValueEdit.setVisible(False)
 
         checkModeWidget = QWidget()
         checkModeLayout = QHBoxLayout(checkModeWidget)
@@ -121,9 +131,14 @@ class BuildContent(QWidget):
         if text == "Conditional output":
             self.operatorCombo.setVisible(True)
             self.operatorValueEdit.setVisible(True)
-            # This below is not really needed.
-            self.parent.mainWidget.setMaximumHeight(self.parent.mainWidget.sizeHint().height())
+            self.item.validationCmd.operation = Operation.COMPARISON
         else:
             self.operatorCombo.setVisible(False)
             self.operatorValueEdit.setVisible(False)
-            self.parent.mainWidget.setMaximumHeight(self.parent.openedHeight)
+            self.item.validationCmd.operation = Operation.SAME
+
+    def onOperatorChanged(self, text):
+        self.item.validationCmd.operator = text
+
+    def onOperatorValueChanged(self):
+        self.item.validationCmd.operatorVal = self.operatorValueEdit.text()

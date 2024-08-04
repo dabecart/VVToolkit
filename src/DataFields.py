@@ -13,15 +13,12 @@
 
 from dataclasses import dataclass, asdict, fields, field
 import json
-from typing import List
+from typing import List, ClassVar
 import subprocess
 import shlex    # To easily parse the arguments for a console.
 from time import perf_counter
-
-class TestResult:
-    OK = 1
-    ERROR = 2
-    UNDEFINED = 3
+from ast import literal_eval
+from re import sub
 
 @dataclass
 class ResultCommand:
@@ -37,20 +34,74 @@ class ResultCommand:
         returnSame = self.returnCode == value.returnCode
         return outputSame and returnSame
 
+class TestResult:
+    OK = 1
+    ERROR = 2
+    UNDEFINED = 3
+
+class Operation():
+    operations : List[str] =["Same output", "Conditional output"]
+    SAME = 0
+    COMPARISON = 1
+
 @dataclass
 class ValidationCommand:
-    operation: str  = field(default='same')
+    operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">="]
+
+    operation: int  = field(default=Operation.SAME)
     operator: str   = field(default='==')
     operatorVal : str = field(default='')   
 
     def validate(self, a : ResultCommand, b : ResultCommand, prevTestResult : TestResult) -> TestResult:
         match self.operation:
-            case 'same':
-                currentTestResult = TestResult.OK if a==b else TestResult.ERROR
+            case Operation.SAME:
+                currentTestResult = a==b
+            case Operation.COMPARISON:
+                output = b.output
+                val = self.operatorVal
+
+                # Parse as a string literal if it's inside "".
+                if self.operatorVal.startswith('"') and self.operatorVal.endswith('"'):
+                    try:
+                        val = str(literal_eval(self.operatorVal))
+                    except:
+                        pass
+                else:
+                    # Check if it's an integer number
+                    try:
+                        val = int(val)
+                        output = int(output)
+                    except ValueError:
+                        # Check if it's a float number
+                        try:
+                            val = float(val)
+                            output = float(output)
+                        except ValueError:
+                            # If it's not a string nor a number, just remove the special characters
+                            # that cannot be added without the ""s from the output.
+                            output = sub(r'[\x00-\x1F\x7F]', '', output)
+
+                match self.operator:
+                    case '==':
+                        currentTestResult = output == val
+                    case '<>':
+                        currentTestResult = output != val
+                    case '>':
+                        currentTestResult = output > val
+                    case '<':
+                        currentTestResult = output < val
+                    case '>=':
+                        currentTestResult = output >= val
+                    case '<=':
+                        currentTestResult = output <= val
+                    case _:
+                        print(f"Undefined operator {self.operator} on validate")
+                        currentTestResult = False
             case _:
                 print(f"Undefined operation {self.operation}")
                 currentTestResult = TestResult.ERROR
 
+        currentTestResult = TestResult.OK if currentTestResult else TestResult.ERROR
         if prevTestResult is None or currentTestResult == prevTestResult:
             return currentTestResult
         else:
@@ -58,12 +109,29 @@ class ValidationCommand:
 
     def toString(self):
         match self.operation:
-            case 'same':
+            case Operation.SAME:
                 return "Outputs must be the same."
+            case Operation.COMPARISON:
+                match self.operator:
+                    case '==':
+                        return f"Output must be equal to {self.operatorVal}."
+                    case '<>':
+                        return f"Output must be different than {self.operatorVal}."
+                    case '>':
+                        return f"Output must be greater than {self.operatorVal}."
+                    case '<':
+                        return f"Output must be less than {self.operatorVal}."
+                    case '>=':
+                        return f"Output must be greater than or equal to {self.operatorVal}."
+                    case '<=':
+                        return f"Output must be lesser than or equal to {self.operatorVal}."
+                    case _:
+                        print(f"Undefined operator {self.operator} on toString")
+                        currentTestResult = False
             case _:
-                return "Undefined operation {self.operation}"
+                return f"Undefined operation {self.operation} on toString"
 
-@dataclass
+@dataclass(eq=True)
 class Item:
     id: int                             = field(default=-1)
     name: str                           = field(default="Undeclared")
@@ -74,7 +142,7 @@ class Item:
     result : List[ResultCommand]        = field(default_factory=lambda: [])
     validationCmd : ValidationCommand   = field(default_factory=lambda: ValidationCommand())
     
-    testResult : TestResult             = field(default=None)
+    testResult : int                    = field(default=None)
     testOutput : List[ResultCommand]    = field(default_factory=lambda: [])
 
     def __lt__(self, other):
@@ -116,7 +184,27 @@ class Item:
             resultOutputSave.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
                                                   returnCode=runResult.returncode,
                                                   executionTime=executionTime))
-            
+
+def areItemsSaved(items : List[Item], filename : str) -> bool:
+    with open(filename, 'r') as file:
+        # Create a set of field names from the dataclass
+        itemFields = {field.name for field in fields(Item)}
+
+        itemsDict = json.load(file)
+        for index, itemDict in enumerate(itemsDict):
+            # Filter the dictionary to only include valid fields
+            filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
+            # Handle the result field types.
+            if 'result' in filteredDict:
+                filteredDict['result'] = [ResultCommand(**res) for res in filteredDict['result']]
+            if 'validationCmd' in filteredDict:
+                filteredDict['validationCmd'] = ValidationCommand(**filteredDict['validationCmd'])
+            appendItem = Item(**filteredDict)
+
+            if appendItem != items[index]:
+                return False
+        return True
+
 def saveItemsToFile(items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
         for item in items:
@@ -128,28 +216,29 @@ def saveItemsToFile(items: List[Item], filename: str) -> None:
 
 def loadItemsFromFile(filename: str) -> List[Item]:
     with open(filename, 'r') as file:
-        items_dict = json.load(file)
         # Create a set of field names from the dataclass
-        item_fields = {field.name for field in fields(Item)}
+        itemFields = {field.name for field in fields(Item)}
         items = []
-        for item_dict in items_dict:
+
+        itemsDict = json.load(file)
+        for itemDict in itemsDict:
             # Filter the dictionary to only include valid fields
-            filtered_dict = {k: v for k, v in item_dict.items() if k in item_fields}
-            # Handle the result field.
-            if 'result' in filtered_dict:
-                filtered_dict['result'] = [ResultCommand(**res) for res in filtered_dict['result']]
-            if 'validationCmd' in filtered_dict:
-                filtered_dict['validationCmd'] = ValidationCommand(**filtered_dict['validationCmd'])
+            filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
+            # Handle the result field types.
+            if 'result' in filteredDict:
+                filteredDict['result'] = [ResultCommand(**res) for res in filteredDict['result']]
+            if 'validationCmd' in filteredDict:
+                filteredDict['validationCmd'] = ValidationCommand(**filteredDict['validationCmd'])
             
-            appendItem = Item(**filtered_dict)
+            appendItem = Item(**filteredDict)
             
             # Clean the item before saving it.
             if appendItem.repetitions < 0:
                 appendItem.repetitions = 0
             if appendItem.result:
                 appendItem.result = appendItem.result[:appendItem.repetitions] 
-            if appendItem.testResult:
-                appendItem.testResult = appendItem.testResult[:appendItem.repetitions] 
-
+            if appendItem.testOutput:
+                appendItem.testOutput = appendItem.testOutput[:appendItem.repetitions] 
+            
             items.append(appendItem)
         return items

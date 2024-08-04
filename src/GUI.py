@@ -18,7 +18,7 @@ from PyQt6.QtGui import QIcon, QPalette
 
 from typing import Optional
 
-from DataFields import loadItemsFromFile, saveItemsToFile;
+from DataFields import loadItemsFromFile, saveItemsToFile, areItemsSaved
 from SettingsWindow import ProgramConfig, SettingsWindow
 from Icons import createIcon
 from SetupWidget import SetupWidget
@@ -38,8 +38,6 @@ class GUI(QMainWindow):
         self.config = ProgramConfig()
         # Items read from the file.
         self.items = []
-        # Field to store if the file is not saved.
-        self.unsavedChanges : bool = False
         # Field to save the currently opened file.
         self.currentFile: Optional[str] = None
         # Mode of the current program.
@@ -219,7 +217,7 @@ class GUI(QMainWindow):
             return
         
         if mode == 'test':
-            if self.unsavedChanges:
+            if self.unsavedChanges():
                 QMessageBox.warning(self, 'Save the file first', 
                                     'Save the file first before changing to test mode.')
                 return
@@ -280,7 +278,7 @@ class GUI(QMainWindow):
             act[0].setIcon(createIcon(act[1], programConfig))
 
     def newFile(self):
-        if self.unsavedChanges:
+        if self.unsavedChanges():
             reply = QMessageBox.question(self, 'Unsaved Changes',
                                          'You have unsaved changes. Do you want to save them?',
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
@@ -290,7 +288,7 @@ class GUI(QMainWindow):
             if reply == QMessageBox.StandardButton.Yes:
                 self.saveFile()
 
-        self.currentFile = "Unnamed.vvf"
+        self.currentFile = "file_not_saved.vvf"
 
         self.changeMode('setup')
 
@@ -300,12 +298,10 @@ class GUI(QMainWindow):
 
         self.changeMode(self.currentMode)
 
-        self.unsavedChanges = True
-
         self.centralWidget().show()
 
     def openFile(self):
-        if self.unsavedChanges:
+        if self.unsavedChanges():
             reply = QMessageBox.question(self, 'Unsaved Changes',
                                          'You have unsaved changes. Do you want to save them?',
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
@@ -349,7 +345,6 @@ class GUI(QMainWindow):
                     return False
 
             saveItemsToFile(self.items, self.currentFile)
-            self.unsavedChanges = False
             self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
             self.statusBar.showMessage("File saved.", 3000)
             return True
@@ -358,7 +353,7 @@ class GUI(QMainWindow):
         return False
 
     def closeFile(self):
-        if self.unsavedChanges:
+        if self.unsavedChanges():
             reply = QMessageBox.question(self, 'Unsaved Changes',
                                          'You have unsaved changes. Do you want to save them?',
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
@@ -372,12 +367,11 @@ class GUI(QMainWindow):
         # Hide the whole window pane.
         self.centralWidget().hide()
         self.currentFile = None
-        self.unsavedChanges = False
 
         self.statusBar.showMessage("File closed.", 3000)
 
     def closeEvent(self, event):
-        if self.unsavedChanges:
+        if self.unsavedChanges():
             reply = QMessageBox.question(self, 'Unsaved Changes',
                                          'You have unsaved changes. Do you want to save them?',
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
@@ -390,3 +384,8 @@ class GUI(QMainWindow):
                     event.ignore()
                     return
         event.accept()
+
+    def unsavedChanges(self) -> bool:
+        if self.currentFile:
+            return (self.currentFile == 'file_not_saved.vvf') or not areItemsSaved(self.items, self.currentFile)
+        return False
