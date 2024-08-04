@@ -25,6 +25,7 @@ class CollapsibleBox(QWidget):
         self.item = item
         self.config = config
         self.parent = parent
+        self.content = contentWidget(self.item, self)
 
         self.header = QWidget()
         self.header.setStatusTip('Open this collapsible box.')
@@ -44,14 +45,14 @@ class CollapsibleBox(QWidget):
         self.runButton.setIcon(createIcon(':run', self.config))
         self.runButton.setFixedSize(35, 35)
         self.runButton.setIconSize(QSize(30,30))
-        self.runButton.clicked.connect(lambda : self.parent.runAction('run-item', None, self))
+        self.runButton.clicked.connect(lambda : self.parent.runAction('run-item', 'undo', self.content))
 
         self.clearButton = QPushButton(self)
         self.clearButton.setStatusTip('Clears the results of this test case.')
         self.clearButton.setIcon(createIcon(':clear', self.config))
         self.clearButton.setFixedSize(35, 35)
         self.clearButton.setIconSize(QSize(30,30))
-        self.clearButton.clicked.connect(lambda : self.parent.runAction('clear-item', None, self))
+        self.clearButton.clicked.connect(lambda : self.parent.runAction('clear-item', 'undo', self.content))
 
         self.headerLayout.addWidget(self.arrowLabel)
         self.headerLayout.addWidget(self.iconLabel)
@@ -74,8 +75,6 @@ class CollapsibleBox(QWidget):
         """)
 
         self.header.mousePressEvent = self.toggleContent
-
-        self.content = contentWidget(self.item, self)
 
         self.mainWidget = QWidget()
         self.mainWidget.setObjectName('mainName')

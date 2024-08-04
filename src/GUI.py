@@ -24,8 +24,9 @@ from Icons import createIcon
 from SetupWidget import SetupWidget
 from BuildWidget import BuildWidget
 from TestWidget import TestWidget
+from tools.UndoRedo import UndoRedo
 
-class ItemTable(QMainWindow):
+class GUI(QMainWindow):
     def __init__(self):
         super().__init__()
         
@@ -82,36 +83,37 @@ class ItemTable(QMainWindow):
 
         editMenu = self.menubar.addMenu('&Edit')
 
+        # Configure undo/redo.
+        UndoRedo.setGUI(self)
+
         # Set up undo action
-        self.undoStack = []
         undoAction = editMenu.addAction('&Undo')
         undoAction.setShortcut("Ctrl+Z")
         undoAction.setStatusTip("Undo the last operation")
-        undoAction.triggered.connect(self.undo)
+        undoAction.triggered.connect(UndoRedo.undo)
 
         # Set up redo action
-        self.redoStack = []
         redoAction = editMenu.addAction('&Redo')
         redoAction.setShortcut("Ctrl+Y")
         redoAction.setStatusTip("Redo the last operation")
-        redoAction.triggered.connect(self.redo)
+        redoAction.triggered.connect(UndoRedo.redo)
 
         editMenu.addSeparator()
 
         addItemAction = editMenu.addAction('&Add item')
         addItemAction.setShortcut("Alt+N")
         addItemAction.setStatusTip("Add an item to the list")
-        addItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-add', self.undoStack))
+        addItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-add', 'undo'))
 
         removeItemAction = editMenu.addAction('&Remove item')
         removeItemAction.setShortcut("Del")
         removeItemAction.setStatusTip("Remove an item from the list")
-        removeItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-remove', self.undoStack))
+        removeItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-remove', 'undo'))
 
         duplicateItemAction = editMenu.addAction('&Duplicate item')
         duplicateItemAction.setShortcut("Alt+D")
         duplicateItemAction.setStatusTip("Duplicate an item from the list")
-        duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', self.undoStack))
+        duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', 'undo'))
 
         settingsMenu = self.menubar.addMenu('&Settings')
         programSettAction = settingsMenu.addAction('&Program settings')
@@ -216,6 +218,23 @@ class ItemTable(QMainWindow):
         if self.currentMode == mode:
             return
         
+        if mode == 'test':
+            if self.unsavedChanges:
+                QMessageBox.warning(self, 'Save the file first', 
+                                    'Save the file first before changing to test mode.')
+                return
+
+            for it in self.items:
+                if not it.hasBeenRun():
+                    reply = QMessageBox.question(self, 'Run all tests', 
+                            'You have to run all tests on build mode before changing to test mode.\n'
+                            'Do you want to change to build mode?',
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                            QMessageBox.StandardButton.Yes)
+                    if reply == QMessageBox.StandardButton.Yes:
+                        self.changeMode('build')
+                    return
+
         self.changeMenuBarWidgetButton(self.setupModeAction, False)
         self.changeMenuBarWidgetButton(self.buildModeAction, False)
         self.changeMenuBarWidgetButton(self.testModeAction, False)
@@ -230,7 +249,7 @@ class ItemTable(QMainWindow):
                 self.currentWidget = self.buildWidget
                 self.currentWidget.runAction('populate-table', None)
                 self.changeMenuBarWidgetButton(self.buildModeAction, True)
-            case 'test': 
+            case 'test':
                 self.centralWidget().setCurrentIndex(2)
                 self.currentWidget = self.testWidget
                 self.changeMenuBarWidgetButton(self.testModeAction, True)
@@ -371,17 +390,3 @@ class ItemTable(QMainWindow):
                     event.ignore()
                     return
         event.accept()
-
-    def undo(self):
-        if not self.undoStack:
-            self.statusBar.showMessage("Nothing to undo.", 3000)
-            return
-        action, item = self.undoStack.pop()
-        self.currentWidget.runAction(action, self.redoStack, item)
-
-    def redo(self):
-        if not self.redoStack:
-            self.statusBar.showMessage("Nothing to redo.", 3000)
-            return
-        action, item = self.redoStack.pop()
-        self.currentWidget.runAction(action, self.undoStack, item)

@@ -23,6 +23,7 @@ from typing import Optional
 
 from DataFields import Item
 
+from tools.UndoRedo import UndoRedo
 from widgets.LabeledEditLine import LabeledLineEdit
 from widgets.CodeTextField import CodeTextField
 from widgets.TableCell import TableCell
@@ -50,12 +51,12 @@ class SetupWidget(QWidget):
 
         self.addButton = QPushButton(createIcon(':item-add', "green"), "Add Item")
         self.addButton.setStatusTip('Add a new item to the table.')
-        self.addButton.clicked.connect(lambda : self.runAction('item-add', self.parent.undoStack))
+        self.addButton.clicked.connect(lambda : self.runAction('item-add', 'undo'))
         self.addButton.setFixedHeight(30)
 
         self.removeButton = QPushButton(createIcon(':item-remove', "red"), "Remove Item")
         self.removeButton.setStatusTip('Remove the selected item from the table.')
-        self.removeButton.clicked.connect(lambda : self.runAction('item-remove', self.parent.undoStack))
+        self.removeButton.clicked.connect(lambda : self.runAction('item-remove', 'undo'))
         self.removeButton.setFixedHeight(30)
 
         buttonLayout.addWidget(self.addButton)
@@ -457,7 +458,7 @@ class SetupWidget(QWidget):
             return dupeItem
         return None
 
-    def runAction(self, action, actionStack, *args):
+    def runAction(self, action : str, actionStack : str | None, *args):
         if action == 'item-add':
             item = self.addItem(None if len(args) == 0 else args[0])
 
@@ -478,9 +479,9 @@ class SetupWidget(QWidget):
 
         if actionStack is not None:
             if action == 'item-add' or action == 'item-duplicate':
-                actionStack.append(('item-remove', item))
+                UndoRedo.addAction(actionStack, ('item-remove', item))
             elif action == 'item-remove':
-                actionStack.append(('item-add', item))
+                UndoRedo.addAction(actionStack, ('item-add', item))
 
     def getItemByRow(self, row : int) -> Optional[Item]:
         return self.tableWidget.item(row, 0).associatedItem

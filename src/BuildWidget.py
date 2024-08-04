@@ -20,8 +20,11 @@ from widgets.BuildContent import BuildContent
 from DataFields import Item
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
+from tools.UndoRedo import UndoRedo
 
 from Icons import createIcon
+
+from copy import deepcopy
 
 class BuildWidget(QWidget):
     def __init__(self, parent=None):
@@ -117,7 +120,7 @@ class BuildWidget(QWidget):
             case _:
                 return item.category == categoryFilter
 
-    def runAction(self, action, actionStack, *args):
+    def runAction(self, action : str, actionStack : str | None, *args):
         def onFinishRun(args):
             args.topBar.setEnabled(True)
             self.parent.setEnableToolbars(True)
@@ -181,6 +184,9 @@ class BuildWidget(QWidget):
             if not item.enabled:
                 return
             
+            if actionStack is not None:
+                resultsCopy = deepcopy(item.result)
+
             item.result.clear()
             content.outputReturnValue.clear()
             content.outputCmdText.clear()
@@ -199,7 +205,18 @@ class BuildWidget(QWidget):
                 content = self.scrollLayout.itemAt(i).widget().content
                 # Only clean those shown on screen.
                 if self._filterItemByCategory(content.item, self.categoryCombo.currentText()):
-                    self.runAction('clear-item', actionStack, content) 
+                    self.runAction('clear-item', None, content) 
 
         elif action == 'populate-table':
-                self.populateTable(None)
+            self.populateTable(None)
+
+        elif action == 'set-results':
+            item : Item = args[0].item
+            item.result = args[1]
+            updateFieldsAfterRun([args[0], self])
+
+        if actionStack is not None:
+            if action == 'run-item' or action == 'set-results':
+                UndoRedo.addAction(actionStack, ('clear-item', args[0]))
+            elif action == 'clear-item':
+                UndoRedo.addAction(actionStack, ('set-results', args[0], resultsCopy))

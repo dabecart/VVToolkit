@@ -81,20 +81,24 @@ class Item:
         return self.id < other.id
     
     def hasBeenRun(self) -> bool:
-        return len(self.result) > 0
+        return len(self.result) == self.repetitions
     
     def hasBeenTested(self) -> bool:
-        return len(self.testOutput) > 0
+        return len(self.testOutput) == self.repetitions
     
     def isEnabled(self) -> bool:
         return self.enabled and self.repetitions > 0
 
     def run(self):
-        self._execute(self.result)
+        if not self.hasBeenRun():
+            self._execute(self.result)
             
     def test(self):
         if not self.result:
             print("Cannot test without results!")
+            return
+        
+        if self.hasBeenTested():
             return
         
         # Run the commands.
@@ -136,5 +140,16 @@ def loadItemsFromFile(filename: str) -> List[Item]:
                 filtered_dict['result'] = [ResultCommand(**res) for res in filtered_dict['result']]
             if 'validationCmd' in filtered_dict:
                 filtered_dict['validationCmd'] = ValidationCommand(**filtered_dict['validationCmd'])
-            items.append(Item(**filtered_dict))
+            
+            appendItem = Item(**filtered_dict)
+            
+            # Clean the item before saving it.
+            if appendItem.repetitions < 0:
+                appendItem.repetitions = 0
+            if appendItem.result:
+                appendItem.result = appendItem.result[:appendItem.repetitions] 
+            if appendItem.testResult:
+                appendItem.testResult = appendItem.testResult[:appendItem.repetitions] 
+
+            items.append(appendItem)
         return items

@@ -69,12 +69,12 @@ class TestWidget(QWidget):
 
         layout.addWidget(self.topBar)
 
-        self.scrollArea = QScrollArea()
-        self.scrollArea.setWidgetResizable(True)
-        layout.addWidget(self.scrollArea)
+        scrollArea = QScrollArea(self)
+        scrollArea.setWidgetResizable(True)
+        layout.addWidget(scrollArea)
 
         self.scrollContent = QWidget()
-        self.scrollArea.setWidget(self.scrollContent)
+        scrollArea.setWidget(self.scrollContent)
         self.scrollLayout = QVBoxLayout(self.scrollContent)
         self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -123,9 +123,10 @@ class TestWidget(QWidget):
         def onFinishRun(args):
             args.topBar.setEnabled(True)
             self.parent.setEnableToolbars(True)
-            self.categoryCombo.setEnabled(True)
-            self.categoryCombo.setPlaceholderText("Categories")
-            self.categoryCombo.setCurrentIndex(0)
+            with SignalBlocker(self.categoryCombo):
+                self.categoryCombo.setEnabled(True)
+                self.categoryCombo.setPlaceholderText("Categories")
+                self.categoryCombo.setCurrentIndex(0)
 
         def updateFieldsAfterRun(args):
             item : Item = args[0]
