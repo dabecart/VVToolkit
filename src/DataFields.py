@@ -56,6 +56,13 @@ class ValidationCommand:
         else:
             return TestResult.UNDEFINED
 
+    def toString(self):
+        match self.operation:
+            case 'same':
+                return "Outputs must be the same."
+            case _:
+                return "Undefined operation {self.operation}"
+
 @dataclass
 class Item:
     id: int                             = field(default=-1)
@@ -75,6 +82,9 @@ class Item:
     
     def hasBeenRun(self) -> bool:
         return len(self.result) > 0
+    
+    def hasBeenTested(self) -> bool:
+        return len(self.testOutput) > 0
     
     def isEnabled(self) -> bool:
         return self.enabled and self.repetitions > 0

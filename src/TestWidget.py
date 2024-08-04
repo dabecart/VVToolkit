@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPu
 from PyQt6.QtCore import Qt
 
 from widgets.CollapsibleBox import CollapsibleBox
-from widgets.BuildContent import BuildContent
+from widgets.TestContent import TestContent
 from DataFields import Item, TestResult
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
@@ -52,8 +52,14 @@ class TestWidget(QWidget):
 
         self.categoryCombo = QComboBox()
         self.categoryCombo.setStatusTip("Select the category to filter the test results.")
-        self.categoryCombo.setCurrentIndex(0)
+        self.categoryCombo.setPlaceholderText("Categories")
+        self.categoryCombo.setCurrentIndex(-1)
+        self.categoryCombo.addItem('All categories')
+        self.categoryCombo.addItem('Only OK')
+        self.categoryCombo.addItem('Only ERROR')
         self.categoryCombo.setFixedHeight(30)
+        self.categoryCombo.setMinimumContentsLength(25)
+        self.categoryCombo.setEnabled(False)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
 
         topBarLayout.addWidget(self.runAllButton)
@@ -72,56 +78,24 @@ class TestWidget(QWidget):
         self.scrollLayout = QVBoxLayout(self.scrollContent)
         self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-    def populateTable(self, categoryFilter : str | None):
+    def populateTable(self, categoryFilter):
         if not self.currentTest:
             return
 
-        # Delete all widgets if there are new items or if they are updated. 
-        # This is a safety measure for the order and content of the widgets.
-        foundAll = True
-        for item in self.parent.items:
-            found = False
-            for i in range(self.scrollLayout.count()):
-                widgetItem = self.scrollLayout.itemAt(i).widget()
-                if widgetItem.item is item and widgetItem.isUpdated():
-                    found = True
-                    break
-            if not found:
-                foundAll = False
-                break
-        
-        if foundAll:
-            return
-        
         # Remove all items.
         for i in reversed(range(self.scrollLayout.count())): 
             self.scrollLayout.itemAt(i).widget().setParent(None)
         
         # Add all items in order.
         self.currentTest.sort()
-        categoriesList = []
         longestSentenceCount = 0
         for item in self.currentTest:
-            if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
+            if self._filterItemByCategory(item, categoryFilter):
                 icon = self._getIconFromItem(item)
                 if icon is None:
                     print(f"Missing test result for item {item.id}")
                     continue
-                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, BuildContent, self))
-            if item.category not in categoriesList:
-                categoriesList.append(item.category)
-                if longestSentenceCount < len(item.category):
-                    longestSentenceCount = len(item.category)
-
-        # If no category is given, populate the category combo.
-        if categoryFilter is None:
-            with SignalBlocker(self.categoryCombo):
-                self.categoryCombo.clear()
-                self.categoryCombo.addItem('All categories')
-                self.categoryCombo.addItem('Only OK')
-                self.categoryCombo.addItem('Only ERROR')
-                self.categoryCombo.addItems(categoriesList)
-                self.categoryCombo.setMinimumContentsLength(longestSentenceCount + 10)
+                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, TestContent, self))
 
     def _getIconFromItem(self, item : Item) -> str:
         match item.testResult:
@@ -149,6 +123,9 @@ class TestWidget(QWidget):
         def onFinishRun(args):
             args.topBar.setEnabled(True)
             self.parent.setEnableToolbars(True)
+            self.categoryCombo.setEnabled(True)
+            self.categoryCombo.setPlaceholderText("Categories")
+            self.categoryCombo.setCurrentIndex(0)
 
         def updateFieldsAfterRun(args):
             item : Item = args[0]
@@ -159,8 +136,11 @@ class TestWidget(QWidget):
                 print(f"Missing test result for item {item.id}")
                 return
             
-            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, BuildContent, testW))
+            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, TestContent, testW))
             testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
+            # Add the category to the combo if its not already inside.
+            if testW.categoryCombo.findText(item.category) == -1:
+                testW.categoryCombo.addItem(item.category)
 
         if action == 'run-all-tests':
             funcArg = []
@@ -178,6 +158,10 @@ class TestWidget(QWidget):
                 return
 
             self.topBar.setEnabled(False)
+            self.categoryCombo.setPlaceholderText("Running...")
+            self.categoryCombo.setCurrentIndex(-1)
+            self.categoryCombo.setEnabled(False)
+
             self.parent.setEnableToolbars(False)
 
             self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))

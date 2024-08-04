@@ -50,6 +50,7 @@ class BuildWidget(QWidget):
         self.categoryCombo.setStatusTip("Select the category to filter the test cases.")
         self.categoryCombo.setCurrentIndex(0)
         self.categoryCombo.setFixedHeight(30)
+        self.categoryCombo.setMinimumContentsLength(25)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
 
         topBarLayout.addWidget(self.runAllButton)
@@ -93,14 +94,11 @@ class BuildWidget(QWidget):
         # Add all items in order.
         self.parent.items.sort()
         categoriesList = []
-        longestSentenceCount = 0
         for item in self.parent.items:
             if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
                 self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildContent, self))
             if item.category not in categoriesList:
                 categoriesList.append(item.category)
-                if longestSentenceCount < len(item.category):
-                    longestSentenceCount = len(item.category)
 
         # If no category is given, populate the category combo.
         if categoryFilter is None:
@@ -109,7 +107,6 @@ class BuildWidget(QWidget):
                 self.categoryCombo.addItem('All categories')
                 self.categoryCombo.addItem('Only enabled')
                 self.categoryCombo.addItems(categoriesList)
-                self.categoryCombo.setMinimumContentsLength(longestSentenceCount + 10)
 
     def _filterItemByCategory(self, item : Item, categoryFilter : str) -> bool:
         match categoryFilter:

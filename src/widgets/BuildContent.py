@@ -12,7 +12,7 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QTextEdit, QComboBox, QLineEdit, QPushButton)
+                            QTextEdit, QComboBox, QLineEdit)
 from PyQt6.QtCore import Qt
 
 from DataFields import Item
