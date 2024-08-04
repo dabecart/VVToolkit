@@ -47,7 +47,13 @@ def recolorSVG(icon_path, color):
     if not file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
         raise FileNotFoundError(f"SVG file not found: {icon_path}")
     
-    svg_data = file.readAll().data().decode('utf-8')
+    try:
+        svg_data = file.readAll().data().decode('utf-8')
+    except UnicodeDecodeError:
+        # The file is surely not an SVG.
+        file.close()
+        return icon_path
+    
     file.close()
 
     # Modify the SVG data to change the fill color

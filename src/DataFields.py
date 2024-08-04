@@ -18,21 +18,57 @@ import subprocess
 import shlex    # To easily parse the arguments for a console.
 from time import perf_counter
 
+class TestResult:
+    OK = 1
+    ERROR = 2
+    UNDEFINED = 3
+
 @dataclass
 class ResultCommand:
     output: str             = field(default="")
     returnCode : int        = field(default=None)
     executionTime : float   = field(default=0)
 
+    def __eq__(self, value: object) -> bool:
+        if type(value) is not ResultCommand:
+            return False
+        
+        outputSame = self.output == value.output
+        returnSame = self.returnCode == value.returnCode
+        return outputSame and returnSame
+
+@dataclass
+class ValidationCommand:
+    operation: str  = field(default='same')
+    operator: str   = field(default='==')
+    operatorVal : str = field(default='')   
+
+    def validate(self, a : ResultCommand, b : ResultCommand, prevTestResult : TestResult) -> TestResult:
+        match self.operation:
+            case 'same':
+                currentTestResult = TestResult.OK if a==b else TestResult.ERROR
+            case _:
+                print(f"Undefined operation {self.operation}")
+                currentTestResult = TestResult.ERROR
+
+        if prevTestResult is None or currentTestResult == prevTestResult:
+            return currentTestResult
+        else:
+            return TestResult.UNDEFINED
+
 @dataclass
 class Item:
-    id: int             = field(default=-1)
-    name: str           = field(default="Undeclared")
-    category: str       = field(default="Undetermined")
-    repetitions: int    = field(default=1)
-    enabled: bool       = field(default=False)
-    runcode: str        = field(default="")
-    result : List[ResultCommand]  = field(default_factory=lambda: [])
+    id: int                             = field(default=-1)
+    name: str                           = field(default="Undeclared")
+    category: str                       = field(default="Undetermined")
+    repetitions: int                    = field(default=1)
+    enabled: bool                       = field(default=False)
+    runcode: str                        = field(default="")
+    result : List[ResultCommand]        = field(default_factory=lambda: [])
+    validationCmd : ValidationCommand   = field(default_factory=lambda: ValidationCommand())
+    
+    testResult : TestResult             = field(default=None)
+    testOutput : List[ResultCommand]    = field(default_factory=lambda: [])
 
     def __lt__(self, other):
         return self.id < other.id
@@ -44,17 +80,36 @@ class Item:
         return self.enabled and self.repetitions > 0
 
     def run(self):
+        self._execute(self.result)
+            
+    def test(self):
+        if not self.result:
+            print("Cannot test without results!")
+            return
+        
+        # Run the commands.
+        self._execute(self.testOutput)
+        # Test them against the results.
+        for result, test in zip(self.result, self.testOutput):
+            self.testResult = self.validationCmd.validate(result, test, self.testResult)
+
+    def _execute(self, resultOutputSave):
         commandArgs = shlex.split(self.runcode)
         for _ in range(self.repetitions):
             startTime = perf_counter()
             runResult = subprocess.run(commandArgs, stdout=subprocess.PIPE)
             executionTime = perf_counter() - startTime
-            self.result.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
-                                             returnCode=runResult.returncode,
-                                             executionTime=executionTime))
+            resultOutputSave.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
+                                                  returnCode=runResult.returncode,
+                                                  executionTime=executionTime))
             
 def saveItemsToFile(items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
+        for item in items:
+            dictFields = asdict(item)
+            # Skip all the test related fields.
+            del dictFields['testResult']
+            del dictFields['testOutput']
         json.dump([asdict(item) for item in items], file)
 
 def loadItemsFromFile(filename: str) -> List[Item]:
@@ -69,5 +124,7 @@ def loadItemsFromFile(filename: str) -> List[Item]:
             # Handle the result field.
             if 'result' in filtered_dict:
                 filtered_dict['result'] = [ResultCommand(**res) for res in filtered_dict['result']]
+            if 'validationCmd' in filtered_dict:
+                filtered_dict['validationCmd'] = ValidationCommand(**filtered_dict['validationCmd'])
             items.append(Item(**filtered_dict))
         return items

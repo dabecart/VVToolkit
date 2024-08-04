@@ -23,6 +23,7 @@ from SettingsWindow import ProgramConfig, SettingsWindow
 from Icons import createIcon
 from SetupWidget import SetupWidget
 from BuildWidget import BuildWidget
+from TestWidget import TestWidget
 
 class ItemTable(QMainWindow):
     def __init__(self):
@@ -190,10 +191,12 @@ class ItemTable(QMainWindow):
 
         self.setupWidget = SetupWidget(self)
         self.buildWidget = BuildWidget(self)
+        self.testWidget  = TestWidget(self)
 
         centralWidget = QStackedWidget()
         centralWidget.addWidget(self.setupWidget)
         centralWidget.addWidget(self.buildWidget)
+        centralWidget.addWidget(self.testWidget)
         self.setCentralWidget(centralWidget)
         self.centralWidget().hide()
 
@@ -228,6 +231,8 @@ class ItemTable(QMainWindow):
                 self.currentWidget.runAction('populate-table', None)
                 self.changeMenuBarWidgetButton(self.buildModeAction, True)
             case 'test': 
+                self.centralWidget().setCurrentIndex(2)
+                self.currentWidget = self.testWidget
                 self.changeMenuBarWidgetButton(self.testModeAction, True)
             case _: 
                 print("Unexpected mode.")

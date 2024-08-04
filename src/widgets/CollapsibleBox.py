@@ -37,7 +37,7 @@ class CollapsibleBox(QWidget):
         self.arrowLabel.setPixmap(createIcon(':arrow-right', self.config).pixmap(15,15))
         self.arrowLabel.setFixedWidth(15)
         self.iconLabel = QLabel()
-        self.iconLabel.setPixmap(createIcon(iconName).pixmap(24, 24))
+        self.iconLabel.setPixmap(createIcon(iconName, self.config).pixmap(24, 24))
         self.idLabel = QLabel(str(item.id))
         self.nameLabel = QLabel(item.name)
 

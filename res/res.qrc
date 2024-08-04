@@ -19,6 +19,9 @@
     <file alias="arrow-down">arrow-down.svg</file>
     <file alias="arrow-left">arrow-left.svg</file>
     <file alias="arrow-right">arrow-right.svg</file>
+    <file alias="test-ok">test-ok.svg</file>
+    <file alias="test-error">test-error.svg</file>
+    <file alias="test-undefined">test-undefined.svg</file>
     <file alias="run">run.svg</file>
     <file alias="clear">clear.svg</file>
 </qresource>

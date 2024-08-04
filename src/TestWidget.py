@@ -1,0 +1,202 @@
+# **************************************************************************************************
+# @file TestWidget.py
+# @brief The test mode interface. Runs all testcases and compares them with the output generated on
+# build mode.
+#
+# @project   VVToolkit
+# @version   1.0
+# @date      2024-08-04
+# @author    @dabecart
+#
+# @license
+# This project is licensed under the MIT License - see the LICENSE file for details.
+# **************************************************************************************************
+
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QComboBox, QMessageBox)
+from PyQt6.QtCore import Qt
+
+from widgets.CollapsibleBox import CollapsibleBox
+from DataFields import Item, TestResult
+from tools.ParallelExecution import ParallelLoopExecution
+from tools.SignalBlocker import SignalBlocker
+
+from Icons import createIcon
+
+from typing import List
+from copy import deepcopy
+
+class TestWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__()
+
+        self.parent = parent
+        self.currentTest : List[Item] = []
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        self.topBar = QWidget()
+        topBarLayout = QHBoxLayout(self.topBar)
+
+        self.runAllButton = QPushButton(createIcon(':run', self.parent.config), "Run all")
+        self.runAllButton.setStatusTip("Starts the testing process.")
+        self.runAllButton.clicked.connect(lambda : self.runAction('run-all-tests', None))
+        self.runAllButton.setFixedHeight(30)
+
+        self.clearAllButton = QPushButton(createIcon(':clear', self.parent.config), "Clear all")
+        self.clearAllButton.setStatusTip("Clears this test.")
+        self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-tests', None))
+        self.clearAllButton.setFixedHeight(30)
+
+        self.categoryCombo = QComboBox()
+        self.categoryCombo.setStatusTip("Select the category to filter the test results.")
+        self.categoryCombo.setCurrentIndex(0)
+        self.categoryCombo.setFixedHeight(30)
+        self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
+
+        topBarLayout.addWidget(self.runAllButton)
+        topBarLayout.addWidget(self.clearAllButton)
+        topBarLayout.addStretch()
+        topBarLayout.addWidget(self.categoryCombo)
+
+        layout.addWidget(self.topBar)
+
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidgetResizable(True)
+        layout.addWidget(self.scrollArea)
+
+        self.scrollContent = QWidget()
+        self.scrollArea.setWidget(self.scrollContent)
+        self.scrollLayout = QVBoxLayout(self.scrollContent)
+        self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+    def populateTable(self, categoryFilter : str | None):
+        if not self.currentTest:
+            return
+
+        # Delete all widgets if there are new items or if they are updated. 
+        # This is a safety measure for the order and content of the widgets.
+        foundAll = True
+        for item in self.parent.items:
+            found = False
+            for i in range(self.scrollLayout.count()):
+                widgetItem = self.scrollLayout.itemAt(i).widget()
+                if widgetItem.item is item and widgetItem.isUpdated():
+                    found = True
+                    break
+            if not found:
+                foundAll = False
+                break
+        
+        if foundAll:
+            return
+        
+        # Remove all items.
+        for i in reversed(range(self.scrollLayout.count())): 
+            self.scrollLayout.itemAt(i).widget().setParent(None)
+        
+        # Add all items in order.
+        self.currentTest.sort()
+        categoriesList = []
+        longestSentenceCount = 0
+        for item in self.currentTest:
+            if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
+                icon = self._getIconFromItem(item)
+                if icon is None:
+                    print(f"Missing test result for item {item.id}")
+                    continue
+                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, self))
+            if item.category not in categoriesList:
+                categoriesList.append(item.category)
+                if longestSentenceCount < len(item.category):
+                    longestSentenceCount = len(item.category)
+
+        # If no category is given, populate the category combo.
+        if categoryFilter is None:
+            with SignalBlocker(self.categoryCombo):
+                self.categoryCombo.clear()
+                self.categoryCombo.addItem('All categories')
+                self.categoryCombo.addItem('Only OK')
+                self.categoryCombo.addItem('Only ERROR')
+                self.categoryCombo.addItems(categoriesList)
+                self.categoryCombo.setMinimumContentsLength(longestSentenceCount + 10)
+
+    def _getIconFromItem(self, item : Item) -> str:
+        match item.testResult:
+            case TestResult.OK:
+                return ':test-ok'
+            case TestResult.ERROR:
+                return ':test-error'
+            case TestResult.UNDEFINED:
+                return ':test-undefined'
+            case _:
+                return None
+
+    def _filterItemByCategory(self, item : Item, categoryFilter : str) -> bool:
+        match categoryFilter:
+            case 'All categories':
+                return True
+            case 'Only OK':
+                return item.testResult == TestResult.OK
+            case 'Only ERROR':
+                return item.testResult == TestResult.ERROR
+            case _:
+                return item.category == categoryFilter
+
+    def runAction(self, action, actionStack, *args):
+        def onFinishRun(args):
+            args.topBar.setEnabled(True)
+            self.parent.setEnableToolbars(True)
+
+        def updateFieldsAfterRun(args):
+            item : Item = args[0]
+            testW : TestWidget = args[1]
+
+            icon = self._getIconFromItem(item)
+            if icon is None:
+                print(f"Missing test result for item {item.id}")
+                return
+            
+            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, testW))
+            testW.scrollArea
+            testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
+
+        if action == 'run-all-tests':
+            funcArg = []
+            if not self.currentTest:
+                self.currentTest = deepcopy(self.parent.items)
+            for it in self.currentTest:
+                # Run only tests without results or with wrong results.
+                if it.testResult != TestResult.OK:
+                    funcArg.append([it, self])
+            
+            if funcArg:
+                self.parent.statusBar.showMessage(f"Started running {len(funcArg)} tests.", 3000)
+            else:
+                self.parent.statusBar.showMessage("Nothing to run.", 3000)
+                return
+
+            self.topBar.setEnabled(False)
+            self.parent.setEnableToolbars(False)
+
+            self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
+            self.pex.run()
+
+        elif action == 'clear-all-tests':
+            reply = QMessageBox.question(self, 'Clear all tests?',
+                                        'You will clear all test results.\nAre you sure about it?',
+                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                        QMessageBox.StandardButton.Yes)
+            if reply == QMessageBox.StandardButton.No:
+                return
+            
+            # Remove all items.
+            for i in reversed(range(self.scrollLayout.count())): 
+                self.scrollLayout.itemAt(i).widget().setParent(None)
+            
+            if self.currentTest:
+                self.currentTest.clear()
+
+        elif action == 'populate-table':
+                self.populateTable(None)
