@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPu
 from PyQt6.QtCore import Qt
 
 from widgets.CollapsibleBox import CollapsibleBox
+from widgets.BuildContent import BuildContent
 from DataFields import Item
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
@@ -95,7 +96,7 @@ class BuildWidget(QWidget):
         longestSentenceCount = 0
         for item in self.parent.items:
             if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
-                self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, self))
+                self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildContent, self))
             if item.category not in categoriesList:
                 categoriesList.append(item.category)
                 if longestSentenceCount < len(item.category):
@@ -125,20 +126,20 @@ class BuildWidget(QWidget):
             self.parent.setEnableToolbars(True)
 
         def updateFieldsAfterRun(args):
-            box : CollapsibleBox = args[0]
-            item : Item = box.item
+            content : BuildContent = args[0]
+            item : Item = content.item
             buildWidget : BuildWidget = args[1]
 
-            box.outputCmdText.setText(item.result[0].output)
-            box.outputReturnValue.setText(f"Return: {item.result[0].returnCode}\nExecution time: {item.result[0].executionTime:.2f} ms")
-            box.outputCmdIndexCombo.setPlaceholderText("None")
-            box.outputCmdIndexCombo.setCurrentIndex(0)
-            box.outputCmdIndexCombo.setEnabled(True)
+            content.outputCmdText.setText(item.result[0].output)
+            content.outputReturnValue.setText(f"Return: {item.result[0].returnCode}\nExecution time: {item.result[0].executionTime:.2f} ms")
+            content.outputCmdIndexCombo.setPlaceholderText("None")
+            content.outputCmdIndexCombo.setCurrentIndex(0)
+            content.outputCmdIndexCombo.setEnabled(True)
             buildWidget.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
 
         if action == 'run-item':
-            box : CollapsibleBox = args[0]
-            item : Item = box.item
+            content : BuildContent = args[0]
+            item : Item = content.item
 
             if not item.enabled or item.repetitions <= 0:
                 return
@@ -149,45 +150,45 @@ class BuildWidget(QWidget):
 
             self.topBar.setEnabled(False)
             self.parent.setEnableToolbars(False)
-            box.outputCmdIndexCombo.setPlaceholderText("Running...")
-            box.outputCmdIndexCombo.setCurrentIndex(-1)
-            box.outputCmdIndexCombo.setEnabled(False)
+            content.outputCmdIndexCombo.setPlaceholderText("Running...")
+            content.outputCmdIndexCombo.setCurrentIndex(-1)
+            content.outputCmdIndexCombo.setEnabled(False)
 
-            runArgs = [[box, self]]
+            runArgs = [[content, self]]
             self.pex = ParallelLoopExecution(runArgs, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
             self.pex.run()
 
         elif action == 'run-all-items':
             boxes = []
             for i in range(self.scrollLayout.count()):
-                widget : CollapsibleBox = self.scrollLayout.itemAt(i).widget()
+                content : BuildContent = self.scrollLayout.itemAt(i).widget().content
                 # Only run those that are enabled and are shown on screen.
-                if widget.item.isEnabled() and self._filterItemByCategory(widget.item, self.categoryCombo.currentText()):
-                    boxes.append([widget, self])
+                if content.item.isEnabled() and self._filterItemByCategory(content.item, self.categoryCombo.currentText()):
+                    boxes.append([content, self])
             
             self.topBar.setEnabled(False)
             self.parent.setEnableToolbars(False)
             for args in boxes:
-                box = args[0]
-                box.outputCmdIndexCombo.setPlaceholderText("Running...")
-                box.outputCmdIndexCombo.setCurrentIndex(-1)
-                box.outputCmdIndexCombo.setEnabled(False)
+                content = args[0]
+                content.outputCmdIndexCombo.setPlaceholderText("Running...")
+                content.outputCmdIndexCombo.setCurrentIndex(-1)
+                content.outputCmdIndexCombo.setEnabled(False)
 
             self.pex = ParallelLoopExecution(boxes, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
             self.pex.run()
 
         elif action == 'clear-item':
-            box : CollapsibleBox = args[0]
-            item : Item = box.item
+            content : BuildContent = args[0]
+            item : Item = content.item
 
             if not item.enabled:
                 return
             
             item.result.clear()
-            box.outputReturnValue.clear()
-            box.outputCmdText.clear()
-            box.outputCmdIndexCombo.setCurrentIndex(-1)
-            box.outputCmdIndexCombo.setEnabled(False)
+            content.outputReturnValue.clear()
+            content.outputCmdText.clear()
+            content.outputCmdIndexCombo.setCurrentIndex(-1)
+            content.outputCmdIndexCombo.setEnabled(False)
 
         elif action == 'clear-all-items':
             reply = QMessageBox.question(self, 'Clear all items?',
@@ -198,10 +199,10 @@ class BuildWidget(QWidget):
                 return
             
             for i in range(self.scrollLayout.count()):
-                widget = self.scrollLayout.itemAt(i).widget()
+                content = self.scrollLayout.itemAt(i).widget().content
                 # Only clean those shown on screen.
-                if self._filterItemByCategory(widget.item, self.categoryCombo.currentText()):
-                    self.runAction('clear-item', actionStack, widget) 
+                if self._filterItemByCategory(content.item, self.categoryCombo.currentText()):
+                    self.runAction('clear-item', actionStack, content) 
 
         elif action == 'populate-table':
                 self.populateTable(None)

@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPu
 from PyQt6.QtCore import Qt
 
 from widgets.CollapsibleBox import CollapsibleBox
+from widgets.BuildContent import BuildContent
 from DataFields import Item, TestResult
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
@@ -106,7 +107,7 @@ class TestWidget(QWidget):
                 if icon is None:
                     print(f"Missing test result for item {item.id}")
                     continue
-                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, self))
+                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, BuildContent, self))
             if item.category not in categoriesList:
                 categoriesList.append(item.category)
                 if longestSentenceCount < len(item.category):
@@ -158,8 +159,7 @@ class TestWidget(QWidget):
                 print(f"Missing test result for item {item.id}")
                 return
             
-            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, testW))
-            testW.scrollArea
+            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, BuildContent, testW))
             testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
 
         if action == 'run-all-tests':
@@ -167,8 +167,8 @@ class TestWidget(QWidget):
             if not self.currentTest:
                 self.currentTest = deepcopy(self.parent.items)
             for it in self.currentTest:
-                # Run only tests without results or with wrong results.
-                if it.testResult != TestResult.OK:
+                # Run only tests without results or with wrong results and test that are enabled.
+                if it.enabled and it.testResult != TestResult.OK:
                     funcArg.append([it, self])
             
             if funcArg:
