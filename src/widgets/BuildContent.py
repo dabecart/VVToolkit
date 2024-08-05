@@ -1,6 +1,6 @@
 # **************************************************************************************************
 # @file BuildContent.py
-# @brief Content of the CollapsileBox for the build mode. 
+# @brief Content and header of the CollapsileBox for the build mode. 
 #
 # @project   VVToolkit
 # @version   1.0
@@ -12,11 +12,14 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QTextEdit, QComboBox, QLineEdit)
-from PyQt6.QtCore import Qt
+                            QTextEdit, QComboBox, QLineEdit, QPushButton)
+
+from PyQt6.QtCore import Qt, QSize
 
 from DataFields import Item, Operation, ValidationCommand
 from widgets.CodeTextField import CodeTextField
+
+from Icons import createIcon
 
 class BuildContent(QWidget):
     def __init__(self, item : Item, parent = None) -> None:
@@ -142,3 +145,29 @@ class BuildContent(QWidget):
 
     def onOperatorValueChanged(self):
         self.item.validationCmd.operatorVal = self.operatorValueEdit.text()
+
+class BuildHeader(QWidget):
+    def __init__(self, parent = None) -> None:
+        super().__init__(parent)
+
+        self.parent = parent
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0,0,0,0)
+
+        self.runButton = QPushButton(self)
+        self.runButton.setStatusTip('Runs this test case.')
+        self.runButton.setIcon(createIcon(':run', self.parent.config))
+        self.runButton.setFixedSize(35, 35)
+        self.runButton.setIconSize(QSize(30,30))
+        self.runButton.clicked.connect(lambda : self.parent.parent.runAction('run-item', 'undo', self.parent.content))
+
+        self.clearButton = QPushButton(self)
+        self.clearButton.setStatusTip('Clears the results of this test case.')
+        self.clearButton.setIcon(createIcon(':clear', self.parent.config))
+        self.clearButton.setFixedSize(35, 35)
+        self.clearButton.setIconSize(QSize(30,30))
+        self.clearButton.clicked.connect(lambda : self.parent.parent.runAction('clear-item', 'undo', self.parent.content))
+
+        layout.addWidget(self.runButton)
+        layout.addWidget(self.clearButton)

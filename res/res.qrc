@@ -22,6 +22,7 @@
     <file alias="test-ok">test-ok.svg</file>
     <file alias="test-error">test-error.svg</file>
     <file alias="test-undefined">test-undefined.svg</file>
+    <file alias="test-refresh">test-refresh.svg</file>
     <file alias="run">run.svg</file>
     <file alias="clear">clear.svg</file>
 </qresource>

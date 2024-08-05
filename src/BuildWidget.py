@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPu
 from PyQt6.QtCore import Qt
 
 from widgets.CollapsibleBox import CollapsibleBox
-from widgets.BuildContent import BuildContent
+from widgets.BuildContent import BuildContent, BuildHeader
 from DataFields import Item
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
@@ -99,7 +99,7 @@ class BuildWidget(QWidget):
         categoriesList = []
         for item in self.parent.items:
             if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
-                self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildContent, self))
+                self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildHeader, BuildContent, self))
             if item.category not in categoriesList:
                 categoriesList.append(item.category)
 

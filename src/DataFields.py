@@ -20,21 +20,8 @@ from time import perf_counter
 from ast import literal_eval
 from re import sub
 
-@dataclass
-class ResultCommand:
-    output: str             = field(default="")
-    returnCode : int        = field(default=None)
-    executionTime : float   = field(default=0)
-
-    def __eq__(self, value: object) -> bool:
-        if type(value) is not ResultCommand:
-            return False
-        
-        outputSame = self.output == value.output
-        returnSame = self.returnCode == value.returnCode
-        return outputSame and returnSame
-
 class TestResult:
+    NOTRUN = 0
     OK = 1
     ERROR = 2
     UNDEFINED = 3
@@ -45,19 +32,35 @@ class Operation():
     COMPARISON = 1
 
 @dataclass
+class ResultCommand:
+    output: str             = field(default="")
+    returnCode : int        = field(default=None)
+    executionTime : float   = field(default=0)
+
+    result : int            = field(default=TestResult.NOTRUN)
+
+    def __eq__(self, value: object) -> bool:
+        if type(value) is not ResultCommand:
+            return False
+        
+        outputSame = self.output == value.output
+        returnSame = self.returnCode == value.returnCode
+        return outputSame and returnSame
+
+@dataclass
 class ValidationCommand:
     operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">="]
 
-    operation: int  = field(default=Operation.SAME)
-    operator: str   = field(default='==')
-    operatorVal : str = field(default='')   
+    operation: int      = field(default=Operation.SAME)
+    operator: str       = field(default='==')
+    operatorVal : str   = field(default='')
 
-    def validate(self, a : ResultCommand, b : ResultCommand, prevTestResult : TestResult) -> TestResult:
+    def validate(self, originalResult : ResultCommand, testResult : ResultCommand, prevTestResult : TestResult) -> TestResult:
         match self.operation:
             case Operation.SAME:
-                currentTestResult = a==b
+                currentTestResult = originalResult==testResult
             case Operation.COMPARISON:
-                output = b.output
+                output = testResult.output
                 val = self.operatorVal
 
                 # Parse as a string literal if it's inside "".
@@ -99,12 +102,16 @@ class ValidationCommand:
                         currentTestResult = False
             case _:
                 print(f"Undefined operation {self.operation}")
-                currentTestResult = TestResult.ERROR
+                currentTestResult = False
 
         currentTestResult = TestResult.OK if currentTestResult else TestResult.ERROR
+        # Set the test result on its class.
+        testResult.result = currentTestResult
+
         if prevTestResult is None or currentTestResult == prevTestResult:
             return currentTestResult
         else:
+            # Not all tests run successfully.
             return TestResult.UNDEFINED
 
     def toString(self):
@@ -148,6 +155,10 @@ class Item:
     def __lt__(self, other):
         return self.id < other.id
     
+    def clearTest(self):
+        self.testResult = None
+        self.testOutput.clear()
+
     def hasBeenRun(self) -> bool:
         return len(self.result) == self.repetitions
     

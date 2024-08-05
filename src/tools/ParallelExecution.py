@@ -32,16 +32,19 @@ class Worker(QObject):
 
 class ParallelExecution():
     def __init__(self, runFunction, onFinishFunction) -> None:
+        self.runFunction = runFunction
+        self.onFinishFunction = onFinishFunction
+
         self.thread = QThread()
-        self.worker = Worker(runFunction)
+        self.worker = Worker(self.runFunction)
         self.worker.moveToThread(self.thread)
         
         # Connect the signals
         self.worker.finishedSignal.connect(self.thread.quit)
         self.worker.finishedSignal.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        if onFinishFunction is not None:
-            self.thread.finished.connect(onFinishFunction)
+        if self.onFinishFunction is not None:
+            self.thread.finished.connect(self.onFinishFunction)
         
         # Connect the start of thread to the run function of the worker.
         self.thread.started.connect(self.worker.run)

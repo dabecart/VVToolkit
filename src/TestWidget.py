@@ -16,9 +16,9 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPu
 from PyQt6.QtCore import Qt
 
 from widgets.CollapsibleBox import CollapsibleBox
-from widgets.TestContent import TestContent
+from widgets.TestContent import TestContent, TestHeader
 from DataFields import Item, TestResult
-from tools.ParallelExecution import ParallelLoopExecution
+from tools.ParallelExecution import ParallelLoopExecution, ParallelExecution
 from tools.SignalBlocker import SignalBlocker
 
 from Icons import createIcon
@@ -88,14 +88,16 @@ class TestWidget(QWidget):
         
         # Add all items in order.
         self.currentTest.sort()
-        longestSentenceCount = 0
         for item in self.currentTest:
+            if not item.enabled:
+                continue
+
             if self._filterItemByCategory(item, categoryFilter):
                 icon = self._getIconFromItem(item)
                 if icon is None:
                     print(f"Missing test result for item {item.id}")
                     continue
-                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, TestContent, self))
+                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, TestHeader, TestContent, self))
 
     def _getIconFromItem(self, item : Item) -> str:
         match item.testResult:
@@ -137,7 +139,7 @@ class TestWidget(QWidget):
                 print(f"Missing test result for item {item.id}")
                 return
             
-            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, TestContent, testW))
+            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, TestHeader, TestContent, testW))
             testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
             # Add the category to the combo if its not already inside.
             if testW.categoryCombo.findText(item.category) == -1:
@@ -147,6 +149,7 @@ class TestWidget(QWidget):
             funcArg = []
             if not self.currentTest:
                 self.currentTest = deepcopy(self.parent.items)
+
             for it in self.currentTest:
                 # Run only tests without results or with wrong results and test that are enabled.
                 if it.enabled and it.testResult != TestResult.OK:
@@ -159,11 +162,11 @@ class TestWidget(QWidget):
                 return
 
             self.topBar.setEnabled(False)
-            self.categoryCombo.setPlaceholderText("Running...")
-            self.categoryCombo.setCurrentIndex(-1)
-            self.categoryCombo.setEnabled(False)
-
             self.parent.setEnableToolbars(False)
+            with SignalBlocker(self.categoryCombo):
+                self.categoryCombo.setPlaceholderText("Running...")
+                self.categoryCombo.setCurrentIndex(-1)
+                self.categoryCombo.setEnabled(False)
 
             self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
             self.pex.run()
@@ -182,6 +185,53 @@ class TestWidget(QWidget):
             
             if self.currentTest:
                 self.currentTest.clear()
+
+            self.categoryCombo.setCurrentIndex(-1)
+            self.categoryCombo.setEnabled(False)
+
+        elif action == 'rerun-test':
+            # This item belongs to the self.currentTest (from the deep copy).
+            rerunBox : CollapsibleBox = args[0]
+            rerunItem : Item = rerunBox.item
+
+            # Disable the box.
+            rerunBox.setEnabled(False)
+
+            # Clear the test results.
+            rerunItem.clearTest()
+
+            self.topBar.setEnabled(False)
+            self.parent.setEnableToolbars(False)
+            with SignalBlocker(self.categoryCombo):
+                self.categoryCombo.setPlaceholderText("Running...")
+                self.categoryCombo.setCurrentIndex(-1)
+                self.categoryCombo.setEnabled(False)
+
+            def updateBoxAfterRun(args):
+                rerunBox : CollapsibleBox = args[0]
+                item : Item = rerunBox.item
+                testW : TestWidget = args[1]
+
+                icon = self._getIconFromItem(item)
+                if icon is None:
+                    print(f"Missing test result for item {item.id}")
+                    return
+                
+                positionOfOldBox = testW.scrollLayout.indexOf(rerunBox)
+                oldBox = testW.scrollLayout.takeAt(positionOfOldBox).widget()
+                oldBox.deleteLater()
+
+                testW.scrollLayout.insertWidget(positionOfOldBox, CollapsibleBox(icon, item, testW.parent.config, TestHeader, TestContent, testW))
+                testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
+                # Add the category to the combo if its not already inside.
+                if testW.categoryCombo.findText(item.category) == -1:
+                    testW.categoryCombo.addItem(item.category)
+                
+                # Reenable all the GUI elements.
+                onFinishRun(testW)
+
+            self.pex = ParallelExecution(lambda: rerunItem.test(), lambda: updateBoxAfterRun([rerunBox, self]))
+            self.pex.run()
 
         elif action == 'populate-table':
                 self.populateTable(None)

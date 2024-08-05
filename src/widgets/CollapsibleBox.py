@@ -19,7 +19,7 @@ from DataFields import Item
 from Icons import createIcon
 
 class CollapsibleBox(QWidget):
-    def __init__(self, iconName : str, item : Item, config, contentWidget : type, parent=None):
+    def __init__(self, iconName : str, item : Item, config, contentHeader : type, contentWidget : type, parent=None):
         super().__init__(parent)
 
         self.item = item
@@ -36,31 +36,20 @@ class CollapsibleBox(QWidget):
         self.arrowLabel.setPixmap(createIcon(':arrow-right', self.config).pixmap(15,15))
         self.arrowLabel.setFixedWidth(15)
         self.iconLabel = QLabel()
-        self.iconLabel.setPixmap(createIcon(iconName, self.config).pixmap(24, 24))
+        self.iconLabel.setPixmap(createIcon(iconName, self.config).pixmap(30, 30))
         self.idLabel = QLabel(str(item.id))
+        separatorLabel = QLabel("-")
         self.nameLabel = QLabel(item.name)
 
-        self.runButton = QPushButton(self)
-        self.runButton.setStatusTip('Runs this test case.')
-        self.runButton.setIcon(createIcon(':run', self.config))
-        self.runButton.setFixedSize(35, 35)
-        self.runButton.setIconSize(QSize(30,30))
-        self.runButton.clicked.connect(lambda : self.parent.runAction('run-item', 'undo', self.content))
-
-        self.clearButton = QPushButton(self)
-        self.clearButton.setStatusTip('Clears the results of this test case.')
-        self.clearButton.setIcon(createIcon(':clear', self.config))
-        self.clearButton.setFixedSize(35, 35)
-        self.clearButton.setIconSize(QSize(30,30))
-        self.clearButton.clicked.connect(lambda : self.parent.runAction('clear-item', 'undo', self.content))
+        self.contentHeader = contentHeader(self)
 
         self.headerLayout.addWidget(self.arrowLabel)
         self.headerLayout.addWidget(self.iconLabel)
         self.headerLayout.addWidget(self.idLabel)
+        self.headerLayout.addWidget(separatorLabel)
         self.headerLayout.addWidget(self.nameLabel)
         self.headerLayout.addStretch()
-        self.headerLayout.addWidget(self.clearButton)
-        self.headerLayout.addWidget(self.runButton)
+        self.headerLayout.addWidget(self.contentHeader)
 
         self.header.setFixedHeight(self.header.sizeHint().height())
         self.header.setStyleSheet("""

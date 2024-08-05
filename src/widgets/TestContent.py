@@ -1,6 +1,6 @@
 # **************************************************************************************************
 # @file TestContent.py
-# @brief Content of the CollapsileBox for the test mode. 
+# @brief Content and header of the CollapsibleBox for the test mode. 
 #
 # @project   VVToolkit
 # @version   1.0
@@ -12,11 +12,15 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QTextEdit, QComboBox, QLineEdit)
-from PyQt6.QtCore import Qt
+                            QTextEdit, QComboBox, QPushButton)
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QPainter, QPixmap, QColor, QIcon, QStandardItem, QStandardItemModel
 
 from DataFields import Item
 from widgets.CodeTextField import CodeTextField
+from DataFields import TestResult
+
+from Icons import createIcon
 
 class TestContent(QWidget):
     def __init__(self, item : Item, parent = None) -> None:
@@ -40,7 +44,30 @@ class TestContent(QWidget):
         self.outputCmdIndexCombo.setPlaceholderText("None")
         self.outputCmdIndexCombo.setMinimumHeight(30)
         self.outputCmdIndexCombo.setMinimumWidth(self.outputCmdIndexCombo.sizeHint().width() + 16)
-        self.outputCmdIndexCombo.addItems([str(i) for i in range(self.item.repetitions)])
+        # Add a little colored dot along with the output number to signal the output result.
+        ouputCmdIndexComboContent = [(str(i), self.item.testOutput[i].result) for i in range(self.item.repetitions)]
+        model = QStandardItemModel(self.outputCmdIndexCombo)
+        for text, result in ouputCmdIndexComboContent:
+            match result:
+                case TestResult.OK:         color = QColor('#17e5ae')
+                case TestResult.ERROR:      color = QColor('#e51760')
+                case TestResult.UNDEFINED:  color = QColor('#f7c90f')
+
+            # Create a pixmap with a colored dot.
+            pixmap = QPixmap(20, 20)
+            pixmap.fill(QColor("transparent"))
+
+            painter = QPainter(pixmap)
+            painter.setBrush(color)
+            painter.setPen(color)
+            painter.drawEllipse(3, 3, 14, 14)
+            painter.end()
+
+            # Create the QStandardItem with the icon and text.
+            model.appendRow(QStandardItem(QIcon(pixmap), text))
+        
+        self.outputCmdIndexCombo.setModel(model)
+        
         if self.item.hasBeenRun():
             self.outputCmdIndexCombo.setCurrentIndex(0)
         else:
@@ -107,3 +134,23 @@ class TestContent(QWidget):
             return
         
         self.updateReturnValues(index)
+
+class TestHeader(QWidget):
+    def __init__(self, parent = None) -> None:
+        super().__init__(parent)
+
+        # CollapsibleBox type.
+        self.parent = parent
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0,0,0,0)
+
+        self.refreshButton = QPushButton(self)
+        self.refreshButton.setStatusTip('Repeats this test case.')
+        self.refreshButton.setIcon(createIcon(':test-refresh', self.parent.config))
+        self.refreshButton.setFixedSize(35, 35)
+        self.refreshButton.setIconSize(QSize(30,30))
+        self.refreshButton.clicked.connect(lambda : self.parent.parent.runAction('rerun-test', 'undo', self.parent))
+
+        layout.addWidget(self.refreshButton)
+
