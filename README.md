@@ -12,4 +12,12 @@ Based on this, the program has three modes:
 - **BUILD** mode. On build mode you can run all test cases at once or one at time. For each one, you will define what conditions are to be satisfied to considerate the result as successful. In example: you may specify that the test is successful if and only if the output when run again is exactly the same; or, you can specify which parts are to be the same. Once done, you'll be able to generate a report of the expected behavior of your device.
 - **TEST** mode. On test mode, all test cases are run and they get filtered by the rules defined on BUILD mode. After that, you may generate a report with the obtained results and it will point out the reasons that justify if each test case is successful or not.
 
+# External libraries
+
+The UI is made with [PyQt6](https://pypi.org/project/PyQt6/), version 6.7.1.
+
+This project uses the color theme [qdarktheme](https://pyqtdarktheme.readthedocs.io/en/stable/) version 2.1.0.
+
+The project was built and tested on Python 3.10.8 64-bits.
+
 *This is a work in progress.*
