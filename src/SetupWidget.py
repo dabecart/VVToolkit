@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QCheckBox, QVBoxLayout, QWidget, QHeaderView,
     QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton, QTableWidgetItem
 )
-from PyQt6.QtCore import Qt, QEvent, QTimer
+from PyQt6.QtCore import Qt, QEvent, QTimer, QSize
 from PyQt6.QtGui import QIntValidator
 
 from copy import deepcopy
@@ -27,6 +27,8 @@ from tools.UndoRedo import UndoRedo
 from widgets.LabeledEditLine import LabeledLineEdit
 from widgets.CodeTextField import CodeTextField
 from widgets.TableCell import TableCell
+from widgets.ContainerWidget import ContainerWidget
+from SettingsWindow import ProgramConfig
 
 from Icons import createIcon
 from tools.SignalBlocker import SignalBlocker
@@ -39,6 +41,7 @@ class SetupWidget(QWidget):
 
         layout = QVBoxLayout()
         self.setLayout(layout)
+        layout.setContentsMargins(0,0,0,0)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Create the main splitter
@@ -46,19 +49,22 @@ class SetupWidget(QWidget):
         layout.addWidget(self.splitter)
 
         # Create a widget for the buttons
-        buttonWidget = QWidget()
-        buttonLayout = QHBoxLayout(buttonWidget)
-
         self.addButton = QPushButton(createIcon(':item-add', "green"), "Add Item")
         self.addButton.setStatusTip('Add a new item to the table.')
         self.addButton.clicked.connect(lambda : self.runAction('item-add', 'undo'))
+        self.addButton.setFixedWidth(120)
         self.addButton.setFixedHeight(30)
+        self.addButton.setIconSize(QSize(20,20))
 
         self.removeButton = QPushButton(createIcon(':item-remove', "red"), "Remove Item")
         self.removeButton.setStatusTip('Remove the selected item from the table.')
         self.removeButton.clicked.connect(lambda : self.runAction('item-remove', 'undo'))
+        self.removeButton.setFixedWidth(120)
         self.removeButton.setFixedHeight(30)
+        self.removeButton.setIconSize(QSize(20,20))
 
+        buttonWidget = ContainerWidget()
+        buttonLayout = QHBoxLayout(buttonWidget)
         buttonLayout.addWidget(self.addButton)
         buttonLayout.addWidget(self.removeButton)
         buttonLayout.addStretch()
@@ -71,7 +77,7 @@ class SetupWidget(QWidget):
         tableLayout.addWidget(buttonWidget)
         tableLayout.addWidget(self.tableWidget)
 
-        tableContainer = QWidget()
+        tableContainer = ContainerWidget()
         tableContainer.setLayout(tableLayout)
 
         self.splitter.addWidget(tableContainer)
@@ -88,14 +94,6 @@ class SetupWidget(QWidget):
         self.tableWidget.horizontalHeader().setSectionsClickable(True)
         self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
 
-        # This is so the sorting arrow doesn't get blended with the background in dark mode.
-        if self.parent.config.colorTheme == "dark":
-            self.tableWidget.setStyleSheet("""
-            QHeaderView::section {
-                background-color: #666666;
-            }
-            """)
-        
         # Connect cell click to show details
         self.currentRow = 0
         self.tableWidget.cellClicked.connect(self.showDetails)
@@ -105,7 +103,7 @@ class SetupWidget(QWidget):
         self.tableWidget.viewport().installEventFilter(self)
 
         # Create the details widget with a header
-        self.detailsWidget = QWidget()
+        self.detailsWidget = ContainerWidget()
         self.splitter.addWidget(self.detailsWidget)
         
         # Create a form layout for the details widget
@@ -271,7 +269,7 @@ class SetupWidget(QWidget):
                 except ValueError:
                     inputInt = None
 
-                if inputInt is not None and inputInt >= 0:
+                if inputInt is not None and inputInt > 0:
                     item.repetitions = inputInt
                     # If the number of repetitions is different, clear results.
                     if len(item.result) != item.repetitions:
@@ -300,10 +298,15 @@ class SetupWidget(QWidget):
         item.category = self.categoryField.text()
 
         try:
-            item.repetitions = int(self.repetitionsField.text())
-            # If the number of repetitions is different, clear results.
-            if len(item.result) != item.repetitions:
-                item.result.clear()
+            repetitions = int(self.repetitionsField.text())
+            if repetitions > 0:
+                item.repetitions = repetitions
+                # If the number of repetitions is different, clear results.
+                if len(item.result) != item.repetitions:
+                    item.result.clear()
+            else:
+                self.repetitionsField.setError("This field must be greater than zero.")    
+                return
         except ValueError:
             self.repetitionsField.setError("This field must be a number.")
             return        
@@ -473,3 +476,6 @@ class SetupWidget(QWidget):
 
     def getItemByRow(self, row : int) -> Optional[Item]:
         return self.tableWidget.item(row, 0).associatedItem
+    
+    def redrawIcons(self, programConfig : ProgramConfig):
+        pass

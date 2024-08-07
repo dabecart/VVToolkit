@@ -14,7 +14,10 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QFormLayout, QCheckBox, QDialog, QPushButton
 )
+from PyQt6.QtCore import Qt
 from dataclasses import dataclass, field, fields 
+import qdarktheme
+from Icons import TrackableIcon
 
 @dataclass
 class ProgramConfig:
@@ -44,27 +47,35 @@ class SettingsWindow(QDialog):
         layout = QVBoxLayout()
 
         optionsLayout = QFormLayout()
-
-        colorThemeLayout = QHBoxLayout()
+        layout.addLayout(optionsLayout)
 
         # Dark and light theme buttons
         self.darkTheme = QPushButton("Dark")
-        self.darkTheme.clicked.connect(self.changeToDarkTheme)
+        self.darkTheme.setCheckable(True)
+        self.darkTheme.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.darkTheme.clicked.connect(lambda: self.changeTheme("dark"))
+
         self.lightTheme = QPushButton("Light")
-        self.lightTheme.clicked.connect(self.changeToLightTheme)
+        self.lightTheme.setCheckable(True)
+        self.lightTheme.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.lightTheme.clicked.connect(lambda: self.changeTheme("light"))
 
+        if self.config.colorTheme == "dark":
+            self.darkTheme.setChecked(True)
+            self.lightTheme.setChecked(False)
+        else:
+            self.darkTheme.setChecked(False)
+            self.lightTheme.setChecked(True)
+
+        colorThemeLayout = QHBoxLayout()
         colorThemeLayout.addWidget(self.darkTheme)
-
         colorThemeLayout.addWidget(self.lightTheme)
-
-        optionsLayout.addRow('Color theme', colorThemeLayout)
 
         self.validateCommandsCheck = QCheckBox()
         self.validateCommandsCheck.setChecked(config.validateCommands)
 
+        optionsLayout.addRow('Color theme', colorThemeLayout)
         optionsLayout.addRow('Validate input code', self.validateCommandsCheck)
-
-        layout.addLayout(optionsLayout)
 
         # Add Apply and Cancel buttons
         buttonsLayout = QHBoxLayout()
@@ -81,13 +92,19 @@ class SettingsWindow(QDialog):
     
         self.setLayout(layout)
 
-    def changeToDarkTheme(self):
-        self.config.colorTheme = "dark"
-        self.parentWindow.redrawIcons(self.config)
+    def changeTheme(self, theme):
+        self.config.colorTheme = theme
 
-    def changeToLightTheme(self):
-        self.config.colorTheme = "light"
-        self.parentWindow.redrawIcons(self.config)
+        if self.config.colorTheme == "dark":
+            self.darkTheme.setChecked(True)
+            self.lightTheme.setChecked(False)
+        else:
+            self.darkTheme.setChecked(False)
+            self.lightTheme.setChecked(True)
+
+        qdarktheme.setup_theme(self.config.colorTheme)
+        TrackableIcon.recolorAllIcons(self.config)
+        # self.parentWindow.redrawIcons(self.config)
 
     def applyChanges(self):
         self.config.validateCommands = self.validateCommandsCheck.isChecked()
@@ -95,12 +112,15 @@ class SettingsWindow(QDialog):
         for field in fields(self.config):
             setattr(self.originalConfig, field.name, getattr(self.config, field.name))
         
-        self.parentWindow.redrawIcons(self.config)
+        qdarktheme.setup_theme(self.originalConfig.colorTheme)
+        TrackableIcon.recolorAllIcons(self.originalConfig)
 
         # Close the window.
         self.accept()
 
     def discardChanges(self):
-        self.parentWindow.redrawIcons(self.originalConfig)
+        qdarktheme.setup_theme(self.originalConfig.colorTheme)
+        TrackableIcon.recolorAllIcons(self.originalConfig)
+
         # Close the window.
         self.close()

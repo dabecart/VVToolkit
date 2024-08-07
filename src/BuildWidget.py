@@ -13,7 +13,7 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QComboBox, QMessageBox)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 
 from widgets.CollapsibleBox import CollapsibleBox
 from widgets.BuildContent import BuildContent, BuildHeader
@@ -21,6 +21,8 @@ from DataFields import Item
 from tools.ParallelExecution import ParallelLoopExecution
 from tools.SignalBlocker import SignalBlocker
 from tools.UndoRedo import UndoRedo
+from widgets.ContainerWidget import ContainerWidget
+from SettingsWindow import ProgramConfig
 
 from Icons import createIcon
 
@@ -36,18 +38,19 @@ class BuildWidget(QWidget):
         self.setLayout(layout)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.topBar = QWidget()
-        topBarLayout = QHBoxLayout(self.topBar)
-
         self.runAllButton = QPushButton(createIcon(':run', self.parent.config), "Run all")
         self.runAllButton.setStatusTip("Runs all test cases without output.")
         self.runAllButton.clicked.connect(lambda : self.runAction('run-all-items', None))
+        self.runAllButton.setFixedWidth(120)
         self.runAllButton.setFixedHeight(30)
+        self.runAllButton.setIconSize(QSize(20,20))
 
         self.clearAllButton = QPushButton(createIcon(':clear', self.parent.config), "Clear all")
         self.clearAllButton.setStatusTip("Clears the outputs of all test cases.")
         self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-items', None))
+        self.clearAllButton.setFixedWidth(120)
         self.clearAllButton.setFixedHeight(30)
+        self.clearAllButton.setIconSize(QSize(20,20))
 
         self.categoryCombo = QComboBox()
         self.categoryCombo.setStatusTip("Select the category to filter the test cases.")
@@ -56,10 +59,19 @@ class BuildWidget(QWidget):
         self.categoryCombo.setMinimumContentsLength(25)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
 
+        self.showDisabled = False
+        self.showHideDisabledButton = QPushButton(createIcon(':build-show', self.parent.config), "")
+        self.showHideDisabledButton.setStatusTip("Hide or show disabled test cases.")
+        self.showHideDisabledButton.setFixedHeight(30)
+        self.showHideDisabledButton.clicked.connect(self.showHideDisabledButtonClicked)
+
+        self.topBar = ContainerWidget()
+        topBarLayout = QHBoxLayout(self.topBar)
         topBarLayout.addWidget(self.runAllButton)
         topBarLayout.addWidget(self.clearAllButton)
         topBarLayout.addStretch()
         topBarLayout.addWidget(self.categoryCombo)
+        topBarLayout.addWidget(self.showHideDisabledButton)
 
         layout.addWidget(self.topBar)
 
@@ -67,10 +79,18 @@ class BuildWidget(QWidget):
         self.scrollArea.setWidgetResizable(True)
         layout.addWidget(self.scrollArea)
 
-        self.scrollContent = QWidget()
+        self.scrollContent = ContainerWidget()
         self.scrollArea.setWidget(self.scrollContent)
         self.scrollLayout = QVBoxLayout(self.scrollContent)
         self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+    def showHideDisabledButtonClicked(self):
+        self.showDisabled = not self.showDisabled
+        self.populateTable(self.categoryCombo.currentText())
+        if self.showDisabled :
+            self.showHideDisabledButton.setIcon(createIcon(':build-hide', self.parent.config))
+        else:
+            self.showHideDisabledButton.setIcon(createIcon(':build-show', self.parent.config))
 
     def populateTable(self, categoryFilter : str | None):
         # Delete all widgets if there are new items or if they are updated. 
@@ -98,8 +118,11 @@ class BuildWidget(QWidget):
         self.parent.items.sort()
         categoriesList = []
         for item in self.parent.items:
-            if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
-                self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildHeader, BuildContent, self))
+            # Filter if the item is enabled or not and showDisabled is set.
+            if self.showDisabled or (not self.showDisabled and item.enabled):
+                # Filter by category.
+                if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
+                    self.scrollLayout.addWidget(CollapsibleBox(':logo', item, self.parent.config, BuildHeader, BuildContent, self))
             if item.category not in categoriesList:
                 categoriesList.append(item.category)
 
@@ -108,15 +131,12 @@ class BuildWidget(QWidget):
             with SignalBlocker(self.categoryCombo):
                 self.categoryCombo.clear()
                 self.categoryCombo.addItem('All categories')
-                self.categoryCombo.addItem('Only enabled')
                 self.categoryCombo.addItems(categoriesList)
 
     def _filterItemByCategory(self, item : Item, categoryFilter : str) -> bool:
         match categoryFilter:
             case 'All categories':
                 return True
-            case 'Only enabled':
-                return item.enabled
             case _:
                 return item.category == categoryFilter
 
@@ -220,3 +240,8 @@ class BuildWidget(QWidget):
                 UndoRedo.addAction(actionStack, ('clear-item', args[0]))
             elif action == 'clear-item':
                 UndoRedo.addAction(actionStack, ('set-results', args[0], resultsCopy))
+
+    def redrawIcons(self, programConfig : ProgramConfig):
+        for i in range(self.scrollLayout.count()):
+                content : CollapsibleBox = self.scrollLayout.itemAt(i).widget()
+                content.setStyle()

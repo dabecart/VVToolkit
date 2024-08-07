@@ -11,9 +11,9 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton)
-from PyQt6.QtGui import QPalette
-from PyQt6.QtCore import Qt, QPropertyAnimation, QAbstractAnimation, QSize
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel)
+from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtCore import Qt, QPropertyAnimation, QAbstractAnimation
 
 from DataFields import Item
 from Icons import createIcon
@@ -90,8 +90,18 @@ class CollapsibleBox(QWidget):
         self.animation.setDuration(250)
         self.animation.finished.connect(self.onAnimationFinished)
 
-        midColor = self.palette().color(QPalette.ColorRole.Button)
-        midlightColor = midColor.lighter(150)
+        self.setStyle()
+
+    def setStyle(self):
+        midColor : QColor = self.parent.palette().color(QPalette.ColorRole.Window)
+        brightness = (midColor.red() * 0.299 + midColor.green() * 0.587 + midColor.blue() * 0.114) / 255
+        if brightness < 0.5:
+            midColor = midColor.lighter(150)
+            midlightColor = midColor.lighter(150)
+        else:
+            midlightColor = midColor.darker(102) # Not joking but this is very broken.
+            midColor = midlightColor.darker(102)
+
         self.setStyleSheet(f"""
             #header {{
                 background-color: {midlightColor.name()};

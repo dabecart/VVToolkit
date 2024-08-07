@@ -3,26 +3,36 @@
     <file alias="file-new">file-new.svg</file>
     <file alias="file-open">file-open.svg</file>
     <file alias="file-save">file-save.svg</file>
+
     <file alias="edit-undo">edit-undo.svg</file>
     <file alias="edit-redo">edit-redo.svg</file>
+
     <file alias="item-add">item-add.svg</file>
     <file alias="item-remove">item-remove.svg</file>
     <file alias="item-duplicate">item-duplicate.svg</file>
+
     <file alias="mode-setup">mode-setup.svg</file>
     <file alias="mode-build">mode-build.svg</file>
     <file alias="mode-test">mode-test.svg</file>
+
     <file alias="quit">quit.svg</file>
     <file alias="help-about">help-about.svg</file>
     <file alias="settings-program">settings-program.svg</file>
     <file alias="logo">logo.ico</file>
-    <file alias="arrow-up">arrow-up.svg</file>
-    <file alias="arrow-down">arrow-down.svg</file>
-    <file alias="arrow-left">arrow-left.svg</file>
-    <file alias="arrow-right">arrow-right.svg</file>
+
+    <file alias="build-show">build-show.svg</file>
+    <file alias="build-hide">build-hide.svg</file>
+
     <file alias="test-ok">test-ok.svg</file>
     <file alias="test-error">test-error.svg</file>
     <file alias="test-undefined">test-undefined.svg</file>
     <file alias="test-refresh">test-refresh.svg</file>
+
+    <file alias="arrow-up">arrow-up.svg</file>
+    <file alias="arrow-down">arrow-down.svg</file>
+    <file alias="arrow-left">arrow-left.svg</file>
+    <file alias="arrow-right">arrow-right.svg</file>
+
     <file alias="run">run.svg</file>
     <file alias="clear">clear.svg</file>
 </qresource>

@@ -12,9 +12,9 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QMessageBox, QFileDialog, QWidget, QSizePolicy, QToolBar, QStackedWidget
+    QMainWindow, QLabel, QMessageBox, QFileDialog, QSizePolicy, QToolBar, QStackedWidget
 )
-from PyQt6.QtGui import QIcon, QPalette
+from PyQt6.QtGui import QIcon, QPalette, QActionGroup
 
 from typing import Optional
 
@@ -25,6 +25,8 @@ from SetupWidget import SetupWidget
 from BuildWidget import BuildWidget
 from TestWidget import TestWidget
 from tools.UndoRedo import UndoRedo
+
+from widgets.ContainerWidget import ContainerWidget
 
 class GUI(QMainWindow):
     def __init__(self):
@@ -42,6 +44,9 @@ class GUI(QMainWindow):
         self.currentFile: Optional[str] = None
         # Mode of the current program.
         self.currentMode : str = None
+        # The currently shown widget on the center of the GUI.
+        self.currentWidget = None
+
         # Check if the color is closer to black (dark mode) or white (light mode)
         color = self.palette().color(QPalette.ColorRole.Window)
         brightness = (color.red() * 0.299 + color.green() * 0.587 + color.blue() * 0.114) / 255
@@ -124,14 +129,23 @@ class GUI(QMainWindow):
         self.setupModeAction = settingsMenu.addAction('&SETUP mode')
         self.setupModeAction.setStatusTip("Change to SETUP mode.")
         self.setupModeAction.triggered.connect(lambda : self.changeMode('setup'))
+        self.setupModeAction.setCheckable(True)
 
         self.buildModeAction = settingsMenu.addAction('&BUILD mode')
         self.buildModeAction.setStatusTip("Change to BUILD mode.")
         self.buildModeAction.triggered.connect(lambda : self.changeMode('build'))
+        self.buildModeAction.setCheckable(True)
 
         self.testModeAction = settingsMenu.addAction('&TEST mode')
         self.testModeAction.setStatusTip("Change to TEST mode.")
         self.testModeAction.triggered.connect(lambda : self.changeMode('test'))
+        self.testModeAction.setCheckable(True)
+
+        actionGroup = QActionGroup(self)
+        actionGroup.setExclusive(True)
+        actionGroup.addAction(self.setupModeAction)
+        actionGroup.addAction(self.buildModeAction)
+        actionGroup.addAction(self.testModeAction)
 
         helpMenu = self.menubar.addMenu('&Help')
         aboutAction = helpMenu.addAction('&About')
@@ -155,7 +169,13 @@ class GUI(QMainWindow):
             [self.buildModeAction,       ':mode-build'],
             [self.testModeAction,        ':mode-test'],
         ]
-        self.redrawIcons(self.config)
+
+        # Create the icons and set them to the actions. These icons will automatically update during
+        # a color theme change.
+        for act in self.actionsIcons:
+            newIcon = createIcon(act[1], self.config)
+            newIcon.setAssociatedWidget(act[0])
+            act[0].setIcon(newIcon)
 
         # Tool bar
         fileToolBar = self.addToolBar('File')
@@ -175,7 +195,7 @@ class GUI(QMainWindow):
         settingsToolBar.addAction(programSettAction)
 
         # Spacer to move the MODE buttons to the right.
-        spacer = QWidget()
+        spacer = ContainerWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         settingsToolBar.addWidget(spacer)
 
@@ -200,7 +220,7 @@ class GUI(QMainWindow):
         self.setCentralWidget(centralWidget)
         self.centralWidget().hide()
 
-        self.currentWidget = None
+        self.changeMode(None)
 
     def setEnableToolbars(self, enable : bool):
         self.menubar.setEnabled(enable)
@@ -209,11 +229,7 @@ class GUI(QMainWindow):
             t.setEnabled(enable)
 
     def changeMode(self, mode : str):
-        if self.currentFile is None:
-            self.statusBar.showMessage("Open a file first to change mode.", 3000)
-            return
-        
-        if self.currentMode == mode:
+        if mode is not None and self.currentMode == mode:
             return
         
         if mode == 'test':
@@ -251,31 +267,24 @@ class GUI(QMainWindow):
                 self.centralWidget().setCurrentIndex(2)
                 self.currentWidget = self.testWidget
                 self.changeMenuBarWidgetButton(self.testModeAction, True)
-            case _: 
-                print("Unexpected mode.")
+            case None:
+                self.changeMenuBarWidgetButton(self.setupModeAction, None)
+                self.changeMenuBarWidgetButton(self.buildModeAction, None)
+                self.changeMenuBarWidgetButton(self.testModeAction,  None)
                 return
 
         self.currentMode = mode
 
-    def changeMenuBarWidgetButton(self, action, selected : bool):
-        toolbar = self.findChild(QToolBar, "Settings Toolbar")
-        if toolbar:
-            modeWidget = toolbar.widgetForAction(action)
-            if modeWidget:
-                if selected:
-                    modeWidget.setStyleSheet(f"background-color: #6f7026;"
-                                             "border-radius: 4px;")          
-                else:
-                    current_color = self.palette().color(QPalette.ColorRole.Window)
-                    modeWidget.setStyleSheet(f"background-color: {current_color.name()};")     
+    def changeMenuBarWidgetButton(self, action, selected : bool | None):
+        if selected is None:
+            action.setEnabled(False)
+        else:
+            action.setEnabled(True)
+            action.setChecked(selected)
 
     def changeConfig(self):
         settingsWindow = SettingsWindow(self.config, self)
         settingsWindow.exec()
-
-    def redrawIcons(self, programConfig : ProgramConfig):
-        for act in self.actionsIcons:
-            act[0].setIcon(createIcon(act[1], programConfig))
 
     def newFile(self):
         if self.unsavedChanges():
@@ -295,8 +304,6 @@ class GUI(QMainWindow):
         self.currentWidget.runAction('populate-table', None)
 
         self.statusBar.showMessage("New file created.", 3000)
-
-        self.changeMode(self.currentMode)
 
         self.centralWidget().show()
 
@@ -367,6 +374,8 @@ class GUI(QMainWindow):
         # Hide the whole window pane.
         self.centralWidget().hide()
         self.currentFile = None
+
+        self.changeMode(None)
 
         self.statusBar.showMessage("File closed.", 3000)
 

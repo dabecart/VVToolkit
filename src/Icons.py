@@ -16,32 +16,64 @@ from PyQt6.QtGui import QPixmap, QImage, QPainter, QIcon
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import QByteArray, QBuffer, QIODevice, QFile, Qt
 
-from typing import Union
-
-from SettingsWindow import ProgramConfig
-
 # Don't remove this "unused" import, contains the resource images.
 import ResourcePacket
 
-def createIcon(icon_path : str, theme : Union[ProgramConfig, str, None] = None):
+class TrackableIcon(QIcon):
+    _instances = []
+
+    def __init__(self, filePath, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__class__._instances.append(self)
+        self.filePath = filePath
+
+    def setAssociatedWidget(self, associatedWidget):
+        self.associatedWidget = associatedWidget
+
+    def recolor(self, color):
+        if not hasattr(self, 'associatedWidget') or self.associatedWidget is None:
+            return
+        
+        self.swap(recolorSVG(self.filePath, color))
+
+        widgetEnabled = self.associatedWidget.isEnabled()
+        self.associatedWidget.setIcon(self)
+        self.associatedWidget.setEnabled(widgetEnabled)
+
+    @classmethod
+    def recolorAllIcons(cls, theme):
+        if theme is None:
+            return 
+        
+        match theme.colorTheme:
+            case 'light':
+                color = "black"
+            case 'dark':
+                color = "white"
+
+        for icon in cls._instances:
+            icon.recolor(color)
+
+def createIcon(iconPath : str, theme = None) -> TrackableIcon | QIcon:
     if theme is None:
-        return QIcon(icon_path)
+        return QIcon(iconPath)
     
-    if type(theme) is ProgramConfig:
-        color : str = theme.colorTheme
-    elif type(theme) is str:
+    if type(theme) is str:
         color : str = theme
     else:
-        raise Exception(f"Unexpected type ({type(theme)})")
+        color : str = theme.colorTheme
 
     match color:
         case 'light':
             color = "black"
         case 'dark':
             color = "white"
-    return QIcon(recolorSVG(icon_path, color))
+        case _:
+            return recolorSVG(iconPath, color)
+        
+    return TrackableIcon(iconPath, recolorSVG(iconPath, color))
 
-def recolorSVG(icon_path, color):
+def recolorSVG(icon_path : str, color : str) -> QIcon:
     # Load the SVG data from the resource
     file = QFile(icon_path)
     if not file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):
@@ -52,7 +84,7 @@ def recolorSVG(icon_path, color):
     except UnicodeDecodeError:
         # The file is surely not an SVG.
         file.close()
-        return icon_path
+        return QIcon(icon_path)
     
     file.close()
 
@@ -80,4 +112,4 @@ def recolorSVG(icon_path, color):
 
     # Convert QImage to QPixmap for display
     pixmap = QPixmap.fromImage(image)
-    return pixmap
+    return QIcon(pixmap)

@@ -26,6 +26,13 @@ class TestResult:
     ERROR = 2
     UNDEFINED = 3
 
+    def getResultColor(result):
+        match result:
+            case TestResult.OK:         return '#17e5ae'
+            case TestResult.ERROR:      return '#e51760'
+            case TestResult.UNDEFINED:  return '#f7c90f'
+            case _:                     return '#000000'
+
 class Operation():
     operations : List[str] =["Same output", "Conditional output"]
     SAME = 0
@@ -49,11 +56,14 @@ class ResultCommand:
 
 @dataclass
 class ValidationCommand:
-    operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">="]
+    operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">=", 'contain', "not contain"]
 
     operation: int      = field(default=Operation.SAME)
     operator: str       = field(default='==')
     operatorVal : str   = field(default='')
+
+    def usesBuildOutput(self):
+        return self.operation == Operation.SAME
 
     def validate(self, originalResult : ResultCommand, testResult : ResultCommand, prevTestResult : TestResult) -> TestResult:
         match self.operation:
@@ -97,9 +107,15 @@ class ValidationCommand:
                         currentTestResult = output >= val
                     case '<=':
                         currentTestResult = output <= val
+                    case 'contain':
+                        currentTestResult = str(val) in str(output)
+                    case "not contain":
+                        currentTestResult = str(val) not in str(output)
                     case _:
                         print(f"Undefined operator {self.operator} on validate")
-                        currentTestResult = False
+                        currentTestResult = TestResult.ERROR
+                        # This will make it so that the result is undefined.
+                        prevTestResult = TestResult.UNDEFINED
             case _:
                 print(f"Undefined operation {self.operation}")
                 currentTestResult = False
@@ -114,29 +130,73 @@ class ValidationCommand:
             # Not all tests run successfully.
             return TestResult.UNDEFINED
 
-    def toString(self):
+    def toString(self) -> str:
         match self.operation:
             case Operation.SAME:
-                return "Outputs must be the same."
+                ret =  "Test output <b>must be the same</b> as the original output."
             case Operation.COMPARISON:
                 match self.operator:
                     case '==':
-                        return f"Output must be equal to {self.operatorVal}."
+                        ret =  f"Output must be <b>equal to</b> {self.operatorVal}."
                     case '<>':
-                        return f"Output must be different than {self.operatorVal}."
+                        ret =  f"Output must be <b>different than</b> {self.operatorVal}."
                     case '>':
-                        return f"Output must be greater than {self.operatorVal}."
+                        ret =  f"Output must be <b>greater than</b> {self.operatorVal}."
                     case '<':
-                        return f"Output must be less than {self.operatorVal}."
+                        ret =  f"Output must be <b>less than</b> {self.operatorVal}."
                     case '>=':
-                        return f"Output must be greater than or equal to {self.operatorVal}."
+                        ret =  f"Output must be <b>greater than or equal to</b> {self.operatorVal}."
                     case '<=':
-                        return f"Output must be lesser than or equal to {self.operatorVal}."
+                        ret =  f"Output must be <b>lesser than or equal to</b> {self.operatorVal}."
+                    case 'contain':
+                        ret =  f"Output <b>must contain</b> {self.operatorVal}."
+                    case "not contain":
+                        ret =  f"Output <b>must not contain</b> {self.operatorVal}."
                     case _:
                         print(f"Undefined operator {self.operator} on toString")
-                        currentTestResult = False
+                        ret = ""
             case _:
-                return f"Undefined operation {self.operation} on toString"
+                ret =  f"Undefined operation {self.operation} on toString"
+        return ret
+
+    # Returns the function before this one changing the color of bold words.
+    def validationToString(self, result : TestResult | None = None) -> str:
+        # Get the text.
+        ret : str = self.toString()
+        if result is not None:
+            # Add color to signal the reason the test successes or fails.
+            ret = ret.replace('<b>', f'<span style="color:{TestResult.getResultColor(result)}; font-weight:bold;">', 1)
+            ret = ret.replace('</b>', '</span>', 1)
+        return ret
+    
+    # Similar to before but the text changes depending on the result.
+    def resultToString(self, result : TestResult | None = None) -> str:
+        # Get the text.
+        ret : str = self.toString()
+
+        # Change "must be" for "is" or "is not".
+        match result:
+            case TestResult.OK:
+                ret = ret.replace('must be', '<b>is</b>', 1)
+                # If no "must be" is found, then it may be a single "must".
+                ret = ret.replace('must', 'does')
+
+            case TestResult.ERROR:
+                ret = ret.replace('must be', '<b>is not</b>', 1)
+                # If no "must be" is found, then it may be a single "must".
+                ret = ret.replace('must not', 'does not')
+
+            case TestResult.UNDEFINED:
+                ret = "This test result <b>was not conclusive</b>." + ret
+            
+            case _:
+                print(f"Unexpected result {result} on resultToString.")
+
+        if result is not None:
+            # Add color to signal the reason the test successes or fails.
+            ret = ret.replace('<b>', f'<span style="color:{TestResult.getResultColor(result)}; font-weight:bold;">', 2)
+            ret = ret.replace('</b>', '</span>', 2)
+        return ret
 
 @dataclass(eq=True)
 class Item:
@@ -151,6 +211,7 @@ class Item:
     
     testResult : int                    = field(default=None)
     testOutput : List[ResultCommand]    = field(default_factory=lambda: [])
+    wasTestRepeated : int                  = field(default=0)
 
     def __lt__(self, other):
         return self.id < other.id
