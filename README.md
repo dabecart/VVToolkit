@@ -14,9 +14,11 @@ Based on this, the program has three modes:
 
 # External libraries
 
-The UI is made with [PyQt6](https://pypi.org/project/PyQt6/), version 6.7.1.
+This project uses the following libraries:
 
-This project uses the color theme [qdarktheme](https://pyqtdarktheme.readthedocs.io/en/stable/) version 2.1.0.
+- The UI is made with [PyQt6](https://pypi.org/project/PyQt6/), version 6.7.1.
+- For the color scheme: [qdarktheme](https://pyqtdarktheme.readthedocs.io/en/stable/), version 2.1.0.
+- To export test cases to `.xlsl` files I use [openpyxl](https://openpyxl.readthedocs.io/en/stable/), version 3.1.5.
 
 The project was built and tested on Python 3.10.8 64-bits.
 

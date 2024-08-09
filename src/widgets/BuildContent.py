@@ -120,12 +120,12 @@ class BuildContent(QWidget):
         ret =   (self.outputCmdIndexCombo.count() == self.item.repetitions) \
                 and (self.inputCmdText.toPlainText() == self.item.runcode) \
                 and (self.item.result and self.outputCmdText.toPlainText() != "")
-        if ret:
-            for res in self.item.result:
-                if (self.outputCmdText.toPlainText() == res.output):
-                    return True
+        if not ret:
             return False
-        return ret
+        
+        dummyTextEdit = QTextEdit()
+        dummyTextEdit.setText(self.item.result[int(self.outputCmdIndexCombo.currentText())].output)
+        return (dummyTextEdit.toPlainText() == self.outputCmdText.toPlainText())
     
     def onOutputCmdIndexChanged(self, text):
         try:

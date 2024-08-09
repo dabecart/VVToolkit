@@ -3,6 +3,8 @@
     <file alias="file-new">file-new.svg</file>
     <file alias="file-open">file-open.svg</file>
     <file alias="file-save">file-save.svg</file>
+    <file alias="file-import">file-import.svg</file>
+    <file alias="file-export">file-export.svg</file>
 
     <file alias="edit-undo">edit-undo.svg</file>
     <file alias="edit-redo">edit-redo.svg</file>

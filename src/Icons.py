@@ -81,7 +81,7 @@ def recolorSVG(icon_path : str, color : str) -> QIcon:
     
     try:
         svg_data = file.readAll().data().decode('utf-8')
-    except UnicodeDecodeError:
+    except:
         # The file is surely not an SVG.
         file.close()
         return QIcon(icon_path)

@@ -99,7 +99,7 @@ class TestWidget(QWidget):
             if not item.enabled:
                 continue
 
-            if self._filterItemByCategory(item, categoryFilter):
+            if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
                 icon = self._getIconFromItem(item)
                 if icon is None:
                     print(f"Missing test result for item {item.id}")
@@ -197,12 +197,13 @@ class TestWidget(QWidget):
             self.pex.run()
 
         elif action == 'clear-all-tests':
-            reply = QMessageBox.question(self, 'Clear all tests?',
-                                        'You will clear all test results.\nAre you sure about it?',
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                        QMessageBox.StandardButton.Yes)
-            if reply == QMessageBox.StandardButton.No:
-                return
+            if len(args) > 0 and args[0]:
+                reply = QMessageBox.question(self, 'Clear all tests?',
+                                            'You will clear all test results.\nAre you sure about it?',
+                                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                            QMessageBox.StandardButton.Yes)
+                if reply == QMessageBox.StandardButton.No:
+                    return
             
             # Remove all items.
             for i in reversed(range(self.scrollLayout.count())): 
@@ -213,6 +214,8 @@ class TestWidget(QWidget):
 
             self.categoryCombo.setCurrentIndex(-1)
             self.categoryCombo.setEnabled(False)
+
+            self.currentlyRunningTest = False
 
         elif action == 'rerun-test':
             # This item belongs to the self.currentTest (from the deep copy).
@@ -268,7 +271,7 @@ class TestWidget(QWidget):
             self.pex.run()
 
         elif action == 'populate-table':
-                self.populateTable(None)
+                self.populateTable(args[0])
                 self.currentlyRunningTest = False
 
     def redrawIcons(self, programConfig : ProgramConfig):

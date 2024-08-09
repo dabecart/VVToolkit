@@ -187,7 +187,7 @@ class ValidationCommand:
                 ret = ret.replace('must not', 'does not')
 
             case TestResult.UNDEFINED:
-                ret = "This test result <b>was not conclusive</b>." + ret
+                ret = "This test result <b>was not conclusive</b>. " + ret
             
             case _:
                 print(f"Unexpected result {result} on resultToString.")
@@ -204,20 +204,20 @@ class Item:
     name: str                           = field(default="Undeclared")
     category: str                       = field(default="Undetermined")
     repetitions: int                    = field(default=1)
-    enabled: bool                       = field(default=False)
+    enabled: bool                       = field(default=True)
     runcode: str                        = field(default="")
     result : List[ResultCommand]        = field(default_factory=lambda: [])
     validationCmd : ValidationCommand   = field(default_factory=lambda: ValidationCommand())
     
-    testResult : int                    = field(default=None)
+    testResult : int                    = field(default=TestResult.NOTRUN)
     testOutput : List[ResultCommand]    = field(default_factory=lambda: [])
-    wasTestRepeated : int                  = field(default=0)
+    wasTestRepeated : int               = field(default=0)
 
     def __lt__(self, other):
         return self.id < other.id
     
     def clearTest(self):
-        self.testResult = None
+        self.testResult = TestResult.NOTRUN
         self.testOutput.clear()
 
     def hasBeenRun(self) -> bool:
@@ -286,6 +286,10 @@ def saveItemsToFile(items: List[Item], filename: str) -> None:
             del dictFields['testOutput']
         json.dump([asdict(item) for item in items], file)
 
+def saveTestToFile(items: List[Item], filename: str) -> None:
+    with open(filename, 'w') as file:
+        json.dump([asdict(item) for item in items], file)
+
 def loadItemsFromFile(filename: str) -> List[Item]:
     with open(filename, 'r') as file:
         # Create a set of field names from the dataclass
@@ -312,5 +316,28 @@ def loadItemsFromFile(filename: str) -> List[Item]:
             if appendItem.testOutput:
                 appendItem.testOutput = appendItem.testOutput[:appendItem.repetitions] 
             
+            items.append(appendItem)
+        return items
+    
+def loadTestFromFile(filename: str) -> List[Item]:
+    with open(filename, 'r') as file:
+        # Create a set of field names from the dataclass
+        itemFields = {field.name for field in fields(Item)}
+        items = []
+
+        itemsDict = json.load(file)
+        for itemDict in itemsDict:
+            # Filter the dictionary to only include valid fields
+            filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
+
+            # Handle the result field types.
+            if 'result' in filteredDict:
+                filteredDict['result'] = [ResultCommand(**res) for res in filteredDict['result']]
+            if 'validationCmd' in filteredDict:
+                filteredDict['validationCmd'] = ValidationCommand(**filteredDict['validationCmd'])
+            if 'testOutput' in filteredDict:
+                filteredDict['testOutput'] = [ResultCommand(**res) for res in filteredDict['testOutput']]
+                
+            appendItem = Item(**filteredDict)
             items.append(appendItem)
         return items

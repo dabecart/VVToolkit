@@ -54,7 +54,7 @@ class BuildWidget(QWidget):
 
         self.categoryCombo = QComboBox()
         self.categoryCombo.setStatusTip("Select the category to filter the test cases.")
-        self.categoryCombo.setCurrentIndex(0)
+        self.categoryCombo.addItem('All categories')
         self.categoryCombo.setFixedHeight(30)
         self.categoryCombo.setMinimumContentsLength(25)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
@@ -95,20 +95,38 @@ class BuildWidget(QWidget):
     def populateTable(self, categoryFilter : str | None):
         # Delete all widgets if there are new items or if they are updated. 
         # This is a safety measure for the order and content of the widgets.
-        foundAll = True
+        itemsThatShouldBeShown = []
         for item in self.parent.items:
-            found = False
-            for i in range(self.scrollLayout.count()):
-                widgetItem = self.scrollLayout.itemAt(i).widget()
-                if widgetItem.item is item and widgetItem.isUpdated():
-                    found = True
-                    break
-            if not found:
-                foundAll = False
-                break
+            # If a category filter is being given, check that the item belongs to the shown 
+            # category.
+            if categoryFilter is not None and not self._filterItemByCategory(item, categoryFilter):
+                continue
+            # Pass of the disabled items if the visualization of disabled items is disabled.
+            if not self.showDisabled and not item.enabled:
+                continue
+            itemsThatShouldBeShown.append(item)
+
+        shownWidgets = []
+        shownItems = []
+        for i in range(self.scrollLayout.count()):
+            widget = self.scrollLayout.itemAt(i).widget()
+            shownWidgets.append(widget)
+            shownItems.append(widget.item)
         
-        if foundAll:
-            return
+        if len(itemsThatShouldBeShown) == len(shownWidgets):
+            allFound = True
+            for it in itemsThatShouldBeShown:
+                if it not in shownItems:
+                    allFound = False
+                    break
+
+                for wid in shownWidgets:
+                    if it is wid.item and not wid.isUpdated():
+                        allFound = False
+                        break
+                if not allFound: break
+
+            if allFound: return
         
         # Remove all items.
         for i in reversed(range(self.scrollLayout.count())): 
@@ -228,7 +246,7 @@ class BuildWidget(QWidget):
                     self.runAction('clear-item', None, content) 
 
         elif action == 'populate-table':
-            self.populateTable(None)
+            self.populateTable(args[0])
 
         elif action == 'set-results':
             item : Item = args[0].item

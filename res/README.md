@@ -1,4 +1,4 @@
-Resources taken from [Industrial Sharp UI Icons Collection](https://www.svgrepo.com/collection/industrial-sharp-ui-icons/), under MIT license.
+Resources taken from [Industrial Sharp UI Icons Collection](https://www.svgrepo.com/collection/industrial-sharp-ui-icons/), under MIT license. Some of them were slightly modified by @dabecart.
 
 # Generate the resource pack
 
