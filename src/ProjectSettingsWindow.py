@@ -72,6 +72,7 @@ class ProjectSettingsWindow(QDialog):
             cancelButton = QPushButton('Cancel')
             cancelButton.clicked.connect(self.discardChanges)
             applyButton = QPushButton('Apply')
+            applyButton.setDefault(True)
             applyButton.clicked.connect(self.applyChanges)
 
             buttonsLayout.addWidget(cancelButton)

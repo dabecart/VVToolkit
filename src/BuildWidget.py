@@ -272,8 +272,3 @@ class BuildWidget(QWidget):
                 UndoRedo.addAction(actionStack, ('clear-item', args[0]))
             elif action == 'clear-item':
                 UndoRedo.addAction(actionStack, ('set-results', args[0], resultsCopy))
-
-    def redrawIcons(self, programConfig : ProgramConfig):
-        for i in range(self.scrollLayout.count()):
-                content : CollapsibleBox = self.scrollLayout.itemAt(i).widget()
-                content.setStyle()

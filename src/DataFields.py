@@ -40,21 +40,13 @@ class Operation():
     SAME = 0
     COMPARISON = 1
 
-@dataclass
+@dataclass(eq=True)
 class ResultCommand:
     output: str             = field(default="")
     returnCode : int        = field(default=None)
-    executionTime : float   = field(default=0)
+    executionTime : float   = field(default=0, compare=False)
 
-    result : int            = field(default=TestResult.NOTRUN)
-
-    def __eq__(self, value: object) -> bool:
-        if type(value) is not ResultCommand:
-            return False
-        
-        outputSame = self.output == value.output
-        returnSame = self.returnCode == value.returnCode
-        return outputSame and returnSame
+    result : int            = field(default=TestResult.NOTRUN, compare=False)
 
 @dataclass
 class ValidationCommand:
@@ -126,7 +118,7 @@ class ValidationCommand:
         # Set the test result on its class.
         testResult.result = currentTestResult
 
-        if prevTestResult is None or currentTestResult == prevTestResult:
+        if prevTestResult is TestResult.NOTRUN or currentTestResult == prevTestResult:
             return currentTestResult
         else:
             # Not all tests run successfully.
@@ -264,12 +256,16 @@ class Item:
 
 @dataclass(eq=True)
 class TestDataFields:
-    name : str      = ""
-    project : str   = ""
-    date : str      = ""
-    testCount : str = ""
-    author : str    = ""
-    conductor : str = ""
+    name : str      = field(default="")
+    project : str   = field(default="")
+    date : str      = field(default="", compare=False)
+    testCount : str = field(default="", compare=False)
+    author : str    = field(default="")
+    conductor : str = field(default="")
+
+    def missingFields(self) -> List[str]:
+        classDict = asdict(self)
+        return [key for key, val in classDict.items() if val == ""]
 
 def areItemsSaved(testDataFields : TestDataFields, items : List[Item], filename : str) -> bool:
     with open(filename, 'r') as file:
@@ -308,7 +304,7 @@ def saveItemsToFile(testDataFields : TestDataFields, items: List[Item], filename
             del dictFields['testOutput']
             outputItems.append(dictFields)
             
-        json.dump([asdict(testDataFields), [asdict(item) for item in outputItems]], file)
+        json.dump([asdict(testDataFields), outputItems], file)
 
 def saveTestToFile(testDataFields : TestDataFields, items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:

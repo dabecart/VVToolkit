@@ -34,7 +34,6 @@ class TestWidget(QWidget):
         super().__init__()
 
         self.parent = parent
-        self.projectDataFields : TestDataFields = parent.projectDataFields
         self.currentTest : List[Item] = []
         self.currentlyRunningTest = False
 
@@ -45,28 +44,25 @@ class TestWidget(QWidget):
         self.topBar = ContainerWidget()
         topBarLayout = QHBoxLayout(self.topBar)
 
-        self.runAllButton = QPushButton(createIcon(':run', self.parent.config), "New test")
+        self.runAllButton = QPushButton("New test")
+        icon = createIcon(':run', self.parent.config)
+        icon.setAssociatedWidget(self.runAllButton)
+        self.runAllButton.setIcon(icon)
         self.runAllButton.setStatusTip("Starts the testing process.")
         self.runAllButton.clicked.connect(lambda : self.runAction('run-all-tests', None))
         self.runAllButton.setFixedWidth(120)
         self.runAllButton.setFixedHeight(30)
         self.runAllButton.setIconSize(QSize(20,20))
 
-        self.clearAllButton = QPushButton(createIcon(':clear', self.parent.config), "Clear test")
+        self.clearAllButton = QPushButton("Clear test")
+        icon = createIcon(':clear', self.parent.config)
+        icon.setAssociatedWidget(self.clearAllButton)
+        self.clearAllButton.setIcon(icon)
         self.clearAllButton.setStatusTip("Clears this test.")
         self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-tests', None))
         self.clearAllButton.setFixedWidth(120)
         self.clearAllButton.setFixedHeight(30)
         self.clearAllButton.setIconSize(QSize(20,20))
-
-        icons = [
-            [self.runAllButton,             ':run'],
-            [self.clearAllButton,           ':clear'],
-        ]
-        for widg in icons:
-            newIcon = createIcon(widg[1], self.parent.config)
-            newIcon.setAssociatedWidget(widg[0])
-            widg[0].setIcon(newIcon)
 
         self.categoryCombo = QComboBox()
         self.categoryCombo.setStatusTip("Select the category to filter the test results.")
@@ -193,8 +189,8 @@ class TestWidget(QWidget):
                 self.currentlyRunningTest = False
                 return
 
-            self.projectDataFields.date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-            self.projectDataFields.testCount = len(funcArg)
+            self.parent.projectDataFields.date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.parent.projectDataFields.testCount = len(funcArg)
 
             self.topBar.setEnabled(False)
             self.parent.setEnableToolbars(False)
@@ -307,6 +303,3 @@ class TestWidget(QWidget):
         self.categoryCombo.addItem('All categories')
         self.categoryCombo.addItem('Only OK')
         self.categoryCombo.addItem('Only ERROR')
-
-    def redrawIcons(self, programConfig : ProgramConfig):
-        pass

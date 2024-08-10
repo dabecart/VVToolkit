@@ -476,6 +476,3 @@ class SetupWidget(QWidget):
 
     def getItemByRow(self, row : int) -> Optional[Item]:
         return self.tableWidget.item(row, 0).associatedItem
-    
-    def redrawIcons(self, programConfig : ProgramConfig):
-        pass

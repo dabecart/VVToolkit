@@ -272,24 +272,24 @@ class GUI(QMainWindow):
             self.centralWidget().show()
 
         if mode is not None and self.currentMode == mode:
-            return
+            return True
         
         if mode == 'test':
             if self.unsavedChanges():
                 QMessageBox.warning(self, 'Save the file first', 
                                     'Save the file first before changing to test mode.')
-                return
-
-            for it in self.items:
-                if not it.hasBeenRun():
-                    reply = QMessageBox.question(self, 'Run all tests', 
-                            'You have to run all tests on build mode before changing to test mode.\n'
-                            'Do you want to change to build mode?',
-                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
-                            QMessageBox.StandardButton.Yes)
-                    if reply == QMessageBox.StandardButton.Yes:
-                        self.changeMode('build')
-                    return
+                # Maintain the same mode. Change the newly pressed button.
+                mode = self.currentMode
+            else:
+                for it in self.items:
+                    if not it.hasBeenRun():
+                        reply = QMessageBox.question(self, 'Run all tests', 
+                                'You have to run all tests on build mode before changing to test mode.\n'
+                                'Do you want to change to build mode?',
+                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
+                                QMessageBox.StandardButton.Yes)
+                        if reply == QMessageBox.StandardButton.Yes:
+                            return self.changeMode('build')
 
         self.changeMenuBarWidgetButton(self.setupModeAction, False)
         self.changeMenuBarWidgetButton(self.buildModeAction, False)
@@ -315,6 +315,7 @@ class GUI(QMainWindow):
                 self.changeMenuBarWidgetButton(self.testModeAction,  None)
 
         self.currentMode = mode
+        return True
 
     def changeMenuBarWidgetButton(self, action, selected : bool | None):
         if selected is None:
@@ -517,6 +518,23 @@ class GUI(QMainWindow):
                                  'A test is currently being run.\n'
                                  'Wait for it to end and export it again.')
              return False
+        
+        missingFields = self.projectDataFields.missingFields()
+        if missingFields:
+            missedFieldsStr = ""
+            for field in missingFields:
+                missedFieldsStr += "   - " + field + "\n"
+
+            reply = QMessageBox.question(self, 'Missing test fields',
+                                         'The following test fields are empty:\n'
+                                         f'{missedFieldsStr}'
+                                         'Do you want to fill them before exporting?',
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
+                                         QMessageBox.StandardButton.Cancel, QMessageBox.StandardButton.Yes)
+            if reply == QMessageBox.StandardButton.Cancel:
+                return
+            if reply == QMessageBox.StandardButton.Yes:
+                self.changeProjectSettings()
         
         try:
             fileName, _ = QFileDialog.getSaveFileName(self, 'Export Test File', '', 'VVT Files (*.vvt)')

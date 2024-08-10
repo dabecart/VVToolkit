@@ -1,3 +1,16 @@
+# **************************************************************************************************
+# @file TextExporter.py
+# @brief Used to create an Excel (.xlsl) file from the test results for them to be printed.
+#
+# @project   VVToolkit
+# @version   1.0
+# @date      2024-08-10
+# @author    @dabecart
+#
+# @license
+# This project is licensed under the MIT License - see the LICENSE file for details.
+# **************************************************************************************************
+
 import os
 import re
 from shutil import copyfile
