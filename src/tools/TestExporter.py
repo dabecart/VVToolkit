@@ -7,11 +7,11 @@ import openpyxl.cell
 import openpyxl.worksheet
 from openpyxl.styles import PatternFill, Border, Alignment, Protection, Font
 
-from DataFields import Item
+from DataFields import Item, TestDataFields
 
 from typing import List
 
-def replacePlaceholders(filePath : str, items : List[Item]):
+def replacePlaceholders(filePath : str, testFields : TestDataFields, items : List[Item]):
     # Load the Excel model workbook.
     modelPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TestReportModel.xlsx")
     modelWorkbook = openpyxl.load_workbook(modelPath)
@@ -23,7 +23,14 @@ def replacePlaceholders(filePath : str, items : List[Item]):
     destinyWorkbook = openpyxl.load_workbook(filePath)
     destinySheet = destinyWorkbook["VFR"]
 
-    # First, fetch the "test" header and the "iteration" block from the model.
+    # Edit the VFR data block and fill it with the testFields fields.
+    vfrBlockRange = _findCellByContent(modelSheet, "VFR data block:")
+    vfrBlockRange = modelSheet.cell(row=vfrBlockRange.row, column=vfrBlockRange.column+1).value
+    vfrBlock      = modelSheet[vfrBlockRange]
+    rowStart      = vfrBlock[0][0].row
+    _substituteExcelVariable(destinySheet, rowStart, rowStart+len(vfrBlock), {"testFields" : testFields})
+
+    # Fetch the "test" header and the "iteration" block from the model.
     testBlockRange = _findCellByContent(modelSheet, "Test block:")
     testBlockRange = modelSheet.cell(row=testBlockRange.row, column=testBlockRange.column+1).value
     iterationBlockRange = _findCellByContent(modelSheet, "Iteration block:")
@@ -45,6 +52,7 @@ def replacePlaceholders(filePath : str, items : List[Item]):
         envVars = {
             "totalTestCount"    : totalTestCount,
             "itemNumber"        : itemNumber,
+            "testFields"        : testFields,
             "item"              : item,
         }
         _substituteExcelVariable(destinySheet, rowStart, rowStart+len(testBlock), envVars)
@@ -66,8 +74,19 @@ def replacePlaceholders(filePath : str, items : List[Item]):
             # Modify the new row with the number of pasted rows.
             rowStart += len(iterationBlock)
     
+    # Clear the "Delete Area" (where the cell range indicators are).
+    deleteAreaRange = _findCellByContent(destinySheet, "Delete area:")
+    deleteAreaRange = destinySheet.cell(row=deleteAreaRange.row, column=deleteAreaRange.column+1).value
+    deleteBlock     = destinySheet[deleteAreaRange]
+    _deleteCellRange(deleteBlock)
+
     # Save the modified destiny workbook.
     destinyWorkbook.save(filePath)
+
+def _deleteCellRange(cells):
+    for row in cells:
+        for cell in row:
+            cell.value = ""
 
 def _findCellByContent(excel : openpyxl.worksheet, searchItem : str) -> openpyxl.cell:
     for row in excel.iter_rows():

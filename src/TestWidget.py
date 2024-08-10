@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QSize
 from widgets.CollapsibleBox import CollapsibleBox
 from widgets.TestContent import TestContent, TestHeader
 from widgets.ContainerWidget import ContainerWidget
-from DataFields import Item, TestResult
+from DataFields import Item, TestResult, TestDataFields
 from tools.ParallelExecution import ParallelLoopExecution, ParallelExecution
 from tools.SignalBlocker import SignalBlocker
 from SettingsWindow import ProgramConfig
@@ -27,12 +27,14 @@ from Icons import createIcon
 
 from typing import List
 from copy import deepcopy
+from datetime import datetime
 
 class TestWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
 
         self.parent = parent
+        self.projectDataFields : TestDataFields = parent.projectDataFields
         self.currentTest : List[Item] = []
         self.currentlyRunningTest = False
 
@@ -57,13 +59,19 @@ class TestWidget(QWidget):
         self.clearAllButton.setFixedHeight(30)
         self.clearAllButton.setIconSize(QSize(20,20))
 
+        icons = [
+            [self.runAllButton,             ':run'],
+            [self.clearAllButton,           ':clear'],
+        ]
+        for widg in icons:
+            newIcon = createIcon(widg[1], self.parent.config)
+            newIcon.setAssociatedWidget(widg[0])
+            widg[0].setIcon(newIcon)
+
         self.categoryCombo = QComboBox()
         self.categoryCombo.setStatusTip("Select the category to filter the test results.")
         self.categoryCombo.setPlaceholderText("Categories")
-        self.categoryCombo.setCurrentIndex(-1)
-        self.categoryCombo.addItem('All categories')
-        self.categoryCombo.addItem('Only OK')
-        self.categoryCombo.addItem('Only ERROR')
+        self.clearCategoryCombo()
         self.categoryCombo.setFixedHeight(30)
         self.categoryCombo.setMinimumContentsLength(25)
         self.categoryCombo.setEnabled(False)
@@ -102,7 +110,7 @@ class TestWidget(QWidget):
             if categoryFilter is None or self._filterItemByCategory(item, categoryFilter):
                 icon = self._getIconFromItem(item)
                 if icon is None:
-                    print(f"Missing test result for item {item.id}")
+                    print(f"Missing test result for item {item.id} on populateTable")
                     continue
                 self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, TestHeader, TestContent, self))
 
@@ -113,6 +121,8 @@ class TestWidget(QWidget):
             case TestResult.ERROR:
                 return ':test-error'
             case TestResult.UNDEFINED:
+                return ':test-undefined'
+            case TestResult.NOT_ALL_OK:
                 return ':test-undefined'
             case _:
                 return None
@@ -152,7 +162,7 @@ class TestWidget(QWidget):
 
             icon = self._getIconFromItem(item)
             if icon is None:
-                print(f"Missing test result for item {item.id}")
+                print(f"Missing test result for item {item.id} on UpdateFieldsAfterRun")
                 return
             
             testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, TestHeader, TestContent, testW))
@@ -162,7 +172,6 @@ class TestWidget(QWidget):
                 testW.categoryCombo.addItem(item.category)
 
         if action == 'run-all-tests':
-            funcArg = []
             if self.currentTest:
                 reply = QMessageBox.question(self, 'Clear all tests for new test?',
                                             'You are about to begin a new test.\n' 
@@ -171,26 +180,27 @@ class TestWidget(QWidget):
                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                             QMessageBox.StandardButton.Yes)
                 if reply == QMessageBox.StandardButton.No:
+                    self.currentlyRunningTest = False
                     return
             
             self.currentTest = deepcopy(self.parent.items)
+            funcArg = [[it, self] for it in self.currentTest if it.enabled]
 
-            for it in self.currentTest:
-                # Run only tests that are enabled.
-                if it.enabled:
-                    funcArg.append([it, self])
-            
             if funcArg:
                 self.parent.statusBar.showMessage(f"Started running {len(funcArg)} tests.", 3000)
             else:
                 self.parent.statusBar.showMessage("Nothing to run.", 3000)
+                self.currentlyRunningTest = False
                 return
+
+            self.projectDataFields.date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.projectDataFields.testCount = len(funcArg)
 
             self.topBar.setEnabled(False)
             self.parent.setEnableToolbars(False)
             with SignalBlocker(self.categoryCombo):
+                self.clearCategoryCombo()
                 self.categoryCombo.setPlaceholderText("Running...")
-                self.categoryCombo.setCurrentIndex(-1)
                 self.categoryCombo.setEnabled(False)
 
             self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
@@ -203,6 +213,7 @@ class TestWidget(QWidget):
                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                             QMessageBox.StandardButton.Yes)
                 if reply == QMessageBox.StandardButton.No:
+                    self.currentlyRunningTest = False
                     return
             
             # Remove all items.
@@ -246,7 +257,7 @@ class TestWidget(QWidget):
 
                 icon = self._getIconFromItem(item)
                 if icon is None:
-                    print(f"Missing test result for item {item.id}")
+                    print(f"Missing test result for item {item.id} on updateBoxAfterRun")
                     return
                 
                 positionOfOldBox = testW.scrollLayout.indexOf(rerunBox)
@@ -271,8 +282,31 @@ class TestWidget(QWidget):
             self.pex.run()
 
         elif action == 'populate-table':
-                self.populateTable(args[0])
-                self.currentlyRunningTest = False
+            self.currentlyRunningTest = False
+            self.populateTable(args[0])
+
+        elif action == 'set-read-only':
+            self.currentlyRunningTest = False
+            self.runAllButton.setDisabled(args[0])
+            self.clearAllButton.setDisabled(args[0])
+            if args[0]:
+                with SignalBlocker(self.categoryCombo):
+                    self.categoryCombo.setEnabled(True)
+                    self.categoryCombo.setCurrentIndex(0)
+                    for it in self.currentTest:
+                        if self.categoryCombo.findText(it.category) == -1:
+                            self.categoryCombo.addItem(it.category)
+            else:
+                with SignalBlocker(self.categoryCombo):
+                    self.clearCategoryCombo()
+                    self.categoryCombo.setEnabled(False)
+
+    def clearCategoryCombo(self):
+        self.categoryCombo.clear()
+        self.categoryCombo.setCurrentIndex(-1)
+        self.categoryCombo.addItem('All categories')
+        self.categoryCombo.addItem('Only OK')
+        self.categoryCombo.addItem('Only ERROR')
 
     def redrawIcons(self, programConfig : ProgramConfig):
         pass

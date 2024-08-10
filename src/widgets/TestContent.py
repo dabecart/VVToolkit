@@ -165,7 +165,9 @@ class TestHeader(QWidget):
 
         self.refreshButton = QPushButton(self)
         self.refreshButton.setStatusTip('Repeats this test case.')
-        self.refreshButton.setIcon(createIcon(':test-refresh', self.parent.config))
+        icon = createIcon(':test-refresh', self.parent.config)
+        icon.setAssociatedWidget(self.refreshButton)
+        self.refreshButton.setIcon(icon)
         self.refreshButton.setFixedSize(35, 35)
         self.refreshButton.setIconSize(QSize(30,30))
         self.refreshButton.clicked.connect(lambda : self.parent.parent.runAction('rerun-test', 'undo', self.parent))

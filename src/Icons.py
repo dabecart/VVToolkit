@@ -30,15 +30,34 @@ class TrackableIcon(QIcon):
     def setAssociatedWidget(self, associatedWidget):
         self.associatedWidget = associatedWidget
 
+        # Remove the previously associated widget with this icon.
+        instanceToDelete = None
+        for ins in self.__class__._instances:
+            if not hasattr(ins, 'associatedWidget'):
+                continue
+
+            if ins.associatedWidget is not None and ins.associatedWidget is associatedWidget:
+                instanceToDelete = ins
+                break
+
+        if instanceToDelete is not None and instanceToDelete is not self:
+            self.__class__._instances.remove(instanceToDelete)
+
     def recolor(self, color):
         if not hasattr(self, 'associatedWidget') or self.associatedWidget is None:
             return
         
         self.swap(recolorSVG(self.filePath, color))
 
-        widgetEnabled = self.associatedWidget.isEnabled()
-        self.associatedWidget.setIcon(self)
-        self.associatedWidget.setEnabled(widgetEnabled)
+        if hasattr(self.associatedWidget, 'setIcon'):
+            self.associatedWidget.setIcon(self)
+        elif hasattr(self.associatedWidget, 'setPixmap'):
+            if self.associatedWidget.pixmap() is None:
+                return
+            
+            width = self.associatedWidget.pixmap().width()
+            height = self.associatedWidget.pixmap().height()
+            self.associatedWidget.setPixmap(self.pixmap(width, height))
 
     @classmethod
     def recolorAllIcons(cls, theme):

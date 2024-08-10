@@ -38,14 +38,14 @@ class BuildWidget(QWidget):
         self.setLayout(layout)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        self.runAllButton = QPushButton(createIcon(':run', self.parent.config), "Run all")
+        self.runAllButton = QPushButton("Run all")
         self.runAllButton.setStatusTip("Runs all test cases without output.")
         self.runAllButton.clicked.connect(lambda : self.runAction('run-all-items', None))
         self.runAllButton.setFixedWidth(120)
         self.runAllButton.setFixedHeight(30)
         self.runAllButton.setIconSize(QSize(20,20))
 
-        self.clearAllButton = QPushButton(createIcon(':clear', self.parent.config), "Clear all")
+        self.clearAllButton = QPushButton("Clear all")
         self.clearAllButton.setStatusTip("Clears the outputs of all test cases.")
         self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-items', None))
         self.clearAllButton.setFixedWidth(120)
@@ -60,10 +60,20 @@ class BuildWidget(QWidget):
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
 
         self.showDisabled = False
-        self.showHideDisabledButton = QPushButton(createIcon(':build-show', self.parent.config), "")
+        self.showHideDisabledButton = QPushButton("")
         self.showHideDisabledButton.setStatusTip("Hide or show disabled test cases.")
         self.showHideDisabledButton.setFixedHeight(30)
         self.showHideDisabledButton.clicked.connect(self.showHideDisabledButtonClicked)
+
+        icons = [
+            [self.runAllButton,             ':run'],
+            [self.clearAllButton,           ':clear'],
+            [self.showHideDisabledButton,   ':build-show']
+        ]
+        for widg in icons:
+            newIcon = createIcon(widg[1], self.parent.config)
+            newIcon.setAssociatedWidget(widg[0])
+            widg[0].setIcon(newIcon)
 
         self.topBar = ContainerWidget()
         topBarLayout = QHBoxLayout(self.topBar)
@@ -87,10 +97,14 @@ class BuildWidget(QWidget):
     def showHideDisabledButtonClicked(self):
         self.showDisabled = not self.showDisabled
         self.populateTable(self.categoryCombo.currentText())
+
         if self.showDisabled :
-            self.showHideDisabledButton.setIcon(createIcon(':build-hide', self.parent.config))
+            newIcon = createIcon(':build-hide', self.parent.config)
         else:
-            self.showHideDisabledButton.setIcon(createIcon(':build-show', self.parent.config))
+            newIcon = createIcon(':build-show', self.parent.config)
+
+        newIcon.setAssociatedWidget(self.showHideDisabledButton)
+        self.showHideDisabledButton.setIcon(newIcon)
 
     def populateTable(self, categoryFilter : str | None):
         # Delete all widgets if there are new items or if they are updated. 

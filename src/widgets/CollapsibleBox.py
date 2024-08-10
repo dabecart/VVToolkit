@@ -33,10 +33,16 @@ class CollapsibleBox(QWidget):
         self.headerLayout = QHBoxLayout(self.header)
 
         self.arrowLabel = QLabel()
-        self.arrowLabel.setPixmap(createIcon(':arrow-right', self.config).pixmap(15,15))
+        icon = createIcon(':arrow-right', self.config)
+        icon.setAssociatedWidget(self.arrowLabel)
+        self.arrowLabel.setPixmap(icon.pixmap(15,15))
         self.arrowLabel.setFixedWidth(15)
+
         self.iconLabel = QLabel()
-        self.iconLabel.setPixmap(createIcon(iconName, self.config).pixmap(30, 30))
+        icon = createIcon(iconName, self.config)
+        icon.setAssociatedWidget(self.iconLabel)
+        self.iconLabel.setPixmap(icon.pixmap(30, 30))
+        
         self.idLabel = QLabel(str(item.id))
         separatorLabel = QLabel("-")
         self.nameLabel = QLabel(item.name)
@@ -99,7 +105,7 @@ class CollapsibleBox(QWidget):
             midColor = midColor.lighter(150)
             midlightColor = midColor.lighter(150)
         else:
-            midlightColor = midColor.darker(102) # Not joking but this is very broken.
+            midlightColor = midColor.darker(102) # Not joking but darker() is very broken.
             midColor = midlightColor.darker(102)
 
         self.setStyleSheet(f"""
@@ -123,18 +129,21 @@ class CollapsibleBox(QWidget):
         if self.content.isVisible():
             # Close the window.
             self.header.setStatusTip('Open this collapsible box.')
-            self.arrowLabel.setPixmap(createIcon(':arrow-right', self.config).pixmap(15,15))
+            icon = createIcon(':arrow-right', self.config)
             self.animation.setStartValue(self.openedHeight)
             self.animation.setEndValue(self.closedHeight)
             self.animation.start()
         else:
             # Open the window.
             self.header.setStatusTip('Close this collapsible box.')
-            self.arrowLabel.setPixmap(createIcon(':arrow-down', self.config).pixmap(15,15))
+            icon = createIcon(':arrow-down', self.config)
             self.content.setVisible(True)
             self.animation.setStartValue(self.closedHeight)
             self.animation.setEndValue(self.openedHeight)
             self.animation.start()
+
+        icon.setAssociatedWidget(self.arrowLabel)
+        self.arrowLabel.setPixmap(icon.pixmap(15,15))
 
     def onAnimationFinished(self):
         # Hide the content once the animation finishes.

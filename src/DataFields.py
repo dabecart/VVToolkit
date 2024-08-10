@@ -25,12 +25,14 @@ class TestResult:
     OK = 1
     ERROR = 2
     UNDEFINED = 3
+    NOT_ALL_OK = 4
 
     def getResultColor(result):
         match result:
             case TestResult.OK:         return '#17e5ae'
             case TestResult.ERROR:      return '#e51760'
             case TestResult.UNDEFINED:  return '#f7c90f'
+            case TestResult.NOT_ALL_OK: return '#f7c90f'
             case _:                     return '#000000'
 
 class Operation():
@@ -128,12 +130,12 @@ class ValidationCommand:
             return currentTestResult
         else:
             # Not all tests run successfully.
-            return TestResult.UNDEFINED
+            return TestResult.NOT_ALL_OK
 
     def toString(self) -> str:
         match self.operation:
             case Operation.SAME:
-                ret =  "Test output <b>must be the same</b> as the original output."
+                ret =  "The test output <b>must be the same</b> as the original output."
             case Operation.COMPARISON:
                 match self.operator:
                     case '==':
@@ -189,8 +191,11 @@ class ValidationCommand:
             case TestResult.UNDEFINED:
                 ret = "This test result <b>was not conclusive</b>. " + ret
             
+            case TestResult.NOT_ALL_OK:
+                ret = "This test result had <b>mixed answers</b> and it is not conclusive." + ret
+            
             case _:
-                print(f"Unexpected result {result} on resultToString.")
+                print(f"Unexpected result \"{result}\" on resultToString.")
 
         if result is not None:
             # Add color to signal the reason the test successes or fails.
@@ -257,13 +262,29 @@ class Item:
                                                   returnCode=runResult.returncode,
                                                   executionTime=executionTime))
 
-def areItemsSaved(items : List[Item], filename : str) -> bool:
-    with open(filename, 'r') as file:
-        # Create a set of field names from the dataclass
-        itemFields = {field.name for field in fields(Item)}
+@dataclass(eq=True)
+class TestDataFields:
+    name : str      = ""
+    project : str   = ""
+    date : str      = ""
+    testCount : str = ""
+    author : str    = ""
+    conductor : str = ""
 
-        itemsDict = json.load(file)
-        for index, itemDict in enumerate(itemsDict):
+def areItemsSaved(testDataFields : TestDataFields, items : List[Item], filename : str) -> bool:
+    with open(filename, 'r') as file:
+        jsonList : List = json.load(file)
+        
+        testFields = {field.name for field in fields(TestDataFields)}
+        # The test fields should be the first on the file.
+        filteredDict = {k: v for k, v in jsonList[0].items() if k in testFields}
+        testFields = TestDataFields(**filteredDict)
+        if testDataFields != testFields:
+            return False
+
+        # Create a set of field names from the Item dataclass to filter unexpected arguments.
+        itemFields = {field.name for field in fields(Item)}
+        for index, itemDict in enumerate(jsonList[1]):
             # Filter the dictionary to only include valid fields
             filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
             # Handle the result field types.
@@ -277,27 +298,35 @@ def areItemsSaved(items : List[Item], filename : str) -> bool:
                 return False
         return True
 
-def saveItemsToFile(items: List[Item], filename: str) -> None:
+def saveItemsToFile(testDataFields : TestDataFields, items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
+        outputItems = []
         for item in items:
             dictFields = asdict(item)
             # Skip all the test related fields.
             del dictFields['testResult']
             del dictFields['testOutput']
-        json.dump([asdict(item) for item in items], file)
+            outputItems.append(dictFields)
+            
+        json.dump([asdict(testDataFields), [asdict(item) for item in outputItems]], file)
 
-def saveTestToFile(items: List[Item], filename: str) -> None:
+def saveTestToFile(testDataFields : TestDataFields, items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
-        json.dump([asdict(item) for item in items], file)
+        json.dump([asdict(testDataFields), [asdict(item) for item in items]], file)
 
 def loadItemsFromFile(filename: str) -> List[Item]:
     with open(filename, 'r') as file:
-        # Create a set of field names from the dataclass
+        jsonList : List = json.load(file)
+        
+        testFields = {field.name for field in fields(TestDataFields)}
+        # The test fields should be the first on the file.
+        filteredDict = {k: v for k, v in jsonList[0].items() if k in testFields}
+        testFields = TestDataFields(**filteredDict)
+
+        # Create a set of field names from the Item dataclass to filter unexpected arguments.
         itemFields = {field.name for field in fields(Item)}
         items = []
-
-        itemsDict = json.load(file)
-        for itemDict in itemsDict:
+        for itemDict in jsonList[1]:
             # Filter the dictionary to only include valid fields
             filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
             # Handle the result field types.
@@ -317,17 +346,22 @@ def loadItemsFromFile(filename: str) -> List[Item]:
                 appendItem.testOutput = appendItem.testOutput[:appendItem.repetitions] 
             
             items.append(appendItem)
-        return items
+        return (testFields, items)
     
-def loadTestFromFile(filename: str) -> List[Item]:
+def loadTestFromFile(filename: str):
     with open(filename, 'r') as file:
-        # Create a set of field names from the dataclass
+        jsonList : List = json.load(file)
+        
+        testFields = {field.name for field in fields(TestDataFields)}
+        # The test fields should be the first on the file.
+        filteredDict = {k: v for k, v in jsonList[0].items() if k in testFields}
+        testFields = TestDataFields(**filteredDict)
+
+        # Create a set of field names from the Item dataclass to filter unexpected arguments.
         itemFields = {field.name for field in fields(Item)}
         items = []
-
-        itemsDict = json.load(file)
-        for itemDict in itemsDict:
-            # Filter the dictionary to only include valid fields
+        for itemDict in jsonList[1]:
+            # Filter the dictionary to only include valid fields.
             filteredDict = {k: v for k, v in itemDict.items() if k in itemFields}
 
             # Handle the result field types.
@@ -337,7 +371,7 @@ def loadTestFromFile(filename: str) -> List[Item]:
                 filteredDict['validationCmd'] = ValidationCommand(**filteredDict['validationCmd'])
             if 'testOutput' in filteredDict:
                 filteredDict['testOutput'] = [ResultCommand(**res) for res in filteredDict['testOutput']]
-                
+
             appendItem = Item(**filteredDict)
             items.append(appendItem)
-        return items
+        return (testFields, items)

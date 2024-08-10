@@ -14,6 +14,9 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QFormLayout, QCheckBox, QDialog, QPushButton
 )
+
+from widgets.CollapsibleBox import CollapsibleBox
+
 from PyQt6.QtCore import Qt
 from dataclasses import dataclass, field, fields 
 import qdarktheme
@@ -27,12 +30,12 @@ class ProgramConfig:
 class SettingsWindow(QDialog):
     def __init__(self, config : ProgramConfig, parent = None):
         super().__init__(parent)
-        self.parentWindow = parent
+        self.parent = parent
 
         self.setWindowTitle('Settings')
         self.resize(300, 200)
 
-        parentGeo = self.parentWindow.geometry()
+        parentGeo = self.parent.geometry()
         childGeo = self.geometry()
         self.move(
             parentGeo.center().x() - childGeo.width() // 2,
@@ -79,14 +82,14 @@ class SettingsWindow(QDialog):
 
         # Add Apply and Cancel buttons
         buttonsLayout = QHBoxLayout()
-        self.cancel_button = QPushButton('Cancel')
-        self.cancel_button.clicked.connect(self.discardChanges)
-        self.apply_button = QPushButton('Apply')
-        self.apply_button.clicked.connect(self.applyChanges)
+        self.cancelButton = QPushButton('Cancel')
+        self.cancelButton.clicked.connect(self.discardChanges)
+        self.applyButton = QPushButton('Apply')
+        self.applyButton.clicked.connect(self.applyChanges)
 
         buttonsLayout.addStretch()
-        buttonsLayout.addWidget(self.cancel_button)
-        buttonsLayout.addWidget(self.apply_button)
+        buttonsLayout.addWidget(self.cancelButton)
+        buttonsLayout.addWidget(self.applyButton)
         
         layout.addLayout(buttonsLayout)
     
@@ -102,25 +105,28 @@ class SettingsWindow(QDialog):
             self.darkTheme.setChecked(False)
             self.lightTheme.setChecked(True)
 
-        qdarktheme.setup_theme(self.config.colorTheme)
-        TrackableIcon.recolorAllIcons(self.config)
-        # self.parentWindow.redrawIcons(self.config)
+        self.applyTheme()
 
     def applyChanges(self):
-        self.config.validateCommands = self.validateCommandsCheck.isChecked()
-
         for field in fields(self.config):
             setattr(self.originalConfig, field.name, getattr(self.config, field.name))
         
-        qdarktheme.setup_theme(self.originalConfig.colorTheme)
-        TrackableIcon.recolorAllIcons(self.originalConfig)
+        self.applyTheme()
 
         # Close the window.
         self.accept()
 
     def discardChanges(self):
-        qdarktheme.setup_theme(self.originalConfig.colorTheme)
-        TrackableIcon.recolorAllIcons(self.originalConfig)
+        for field in fields(self.config):
+            setattr(self.config, field.name, getattr(self.originalConfig, field.name))
+
+        self.applyTheme()
 
         # Close the window.
         self.close()
+
+    def applyTheme(self):
+        qdarktheme.setup_theme(self.config.colorTheme)
+        TrackableIcon.recolorAllIcons(self.config)
+        for collaps in self.parent.findChildren(CollapsibleBox):
+            collaps.setStyle()

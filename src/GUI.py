@@ -18,10 +18,13 @@ from PyQt6.QtGui import QIcon, QPalette, QActionGroup
 
 from typing import Optional, List
 
-from DataFields import Item
+from DataFields import Item, TestDataFields
 import DataFields
-from SettingsWindow import ProgramConfig, SettingsWindow
 from Icons import createIcon
+
+from SettingsWindow import ProgramConfig, SettingsWindow
+from ProjectSettingsWindow import ProjectSettingsWindow
+from AboutWindow import AboutWindow
 from SetupWidget import SetupWidget
 from BuildWidget import BuildWidget
 from TestWidget import TestWidget
@@ -40,6 +43,8 @@ class GUI(QMainWindow):
 
         # Stores the configuration of the program.
         self.config = ProgramConfig()
+        # The project configuration.
+        self.projectDataFields : TestDataFields = TestDataFields()
         # Items read from the file.
         self.items : List[Item] = []
         # Field to save the currently opened file.
@@ -96,39 +101,46 @@ class GUI(QMainWindow):
         quitAction.setStatusTip("Quit the application.")
         quitAction.triggered.connect(self.close)
 
-        editMenu = self.menubar.addMenu('&Edit')
+        self.editMenu = self.menubar.addMenu('&Edit')
 
         # Configure undo/redo.
         UndoRedo.setGUI(self)
 
         # Set up undo action
-        undoAction = editMenu.addAction('&Undo')
+        undoAction = self.editMenu.addAction('&Undo')
         undoAction.setShortcut("Ctrl+Z")
         undoAction.setStatusTip("Undo the last operation.")
         undoAction.triggered.connect(UndoRedo.undo)
 
         # Set up redo action
-        redoAction = editMenu.addAction('&Redo')
+        redoAction = self.editMenu.addAction('&Redo')
         redoAction.setShortcut("Ctrl+Y")
         redoAction.setStatusTip("Redo the last operation.")
         redoAction.triggered.connect(UndoRedo.redo)
 
-        editMenu.addSeparator()
+        self.editMenu.addSeparator()
 
-        addItemAction = editMenu.addAction('&Add item')
+        addItemAction = self.editMenu.addAction('&Add item')
         addItemAction.setShortcut("Alt+N")
         addItemAction.setStatusTip("Add an item to the list.")
         addItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-add', 'undo'))
 
-        removeItemAction = editMenu.addAction('&Remove item')
+        removeItemAction = self.editMenu.addAction('&Remove item')
         removeItemAction.setShortcut("Del")
         removeItemAction.setStatusTip("Remove an item from the list.")
         removeItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-remove', 'undo'))
 
-        duplicateItemAction = editMenu.addAction('&Duplicate item')
+        duplicateItemAction = self.editMenu.addAction('&Duplicate item')
         duplicateItemAction.setShortcut("Alt+D")
         duplicateItemAction.setStatusTip("Duplicate an item from the list.")
         duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', 'undo'))
+
+        self.editMenu.addSeparator()
+
+        projectSettings = self.editMenu.addAction('&Project settings')
+        projectSettings.setShortcut("Alt+.")
+        projectSettings.setStatusTip("Set the project and test configuration.")
+        projectSettings.triggered.connect(self.changeProjectSettings)
 
         settingsMenu = self.menubar.addMenu('&Settings')
         programSettAction = settingsMenu.addAction('&Program settings')
@@ -163,6 +175,7 @@ class GUI(QMainWindow):
         aboutAction = helpMenu.addAction('&About')
         aboutAction.setShortcut("F1")
         aboutAction.setStatusTip("Get help and info about this program.")
+        aboutAction.triggered.connect(self.showAboutWindow)
 
         # Add icons to all actions.
         actionsIcons = [
@@ -174,9 +187,10 @@ class GUI(QMainWindow):
             [quitAction,            ':quit'             ],
             [undoAction,            ':edit-undo'        ],
             [redoAction,            ':edit-redo'        ],
+            [projectSettings,       ':edit-settings'    ],   
             [addItemAction,         ':item-add'         ],
             [removeItemAction,      ':item-remove'      ],    
-            [duplicateItemAction,   ':item-duplicate'   ],        
+            [duplicateItemAction,   ':item-duplicate'   ],
             [programSettAction,     ':settings-program' ],    
             [aboutAction,           ':help-about'       ],
             [self.setupModeAction,  ':mode-setup'       ],
@@ -206,6 +220,7 @@ class GUI(QMainWindow):
         settingsToolBar = self.addToolBar('Settings')
         settingsToolBar.setObjectName('Settings Toolbar')
         settingsToolBar.setMovable(False)
+        settingsToolBar.addAction(projectSettings)
         settingsToolBar.addAction(programSettAction)
 
         # Spacer to move the MODE buttons to the right.
@@ -245,7 +260,15 @@ class GUI(QMainWindow):
     def changeMode(self, mode : str | None):
         if mode is None:
             self.centralWidget().hide()
+            # Disable some of the actions.
+            for act in self.editMenu.actions():
+                act.setEnabled(False)    
+            # Reenable the buttons in test mode if the file was closed (they will be hidden).
+            self.testWidget.runAction('set-read-only', None, False)
         else:
+            # Enable some of the actions.
+            for act in self.editMenu.actions():
+                act.setEnabled(True)    
             self.centralWidget().show()
 
         if mode is not None and self.currentMode == mode:
@@ -290,7 +313,6 @@ class GUI(QMainWindow):
                 self.changeMenuBarWidgetButton(self.setupModeAction, None)
                 self.changeMenuBarWidgetButton(self.buildModeAction, None)
                 self.changeMenuBarWidgetButton(self.testModeAction,  None)
-                return
 
         self.currentMode = mode
 
@@ -304,6 +326,14 @@ class GUI(QMainWindow):
     def changeConfig(self):
         settingsWindow = SettingsWindow(self.config, self)
         settingsWindow.exec()
+
+    def changeProjectSettings(self):
+        projectSettings = ProjectSettingsWindow(self.projectDataFields, self.currentFile.endswith(".vvt"), self)
+        projectSettings.exec()
+
+    def showAboutWindow(self):
+        about = AboutWindow(self)
+        about.exec()
 
     def newFile(self):
         if self.unsavedChanges():
@@ -342,7 +372,10 @@ class GUI(QMainWindow):
             return 
         
         try:
-            self.items = DataFields.loadItemsFromFile(fileName)
+            itemsData = DataFields.loadItemsFromFile(fileName)
+            self.projectDataFields = itemsData[0]
+            self.items = itemsData[1]
+            
             self.currentFile = fileName
 
             self.changeMode('setup')
@@ -360,6 +393,13 @@ class GUI(QMainWindow):
         if not self.currentFile:
             QMessageBox.warning(self, 'No File', 'No file selected. Please open a file first.')
             return False
+        
+        if self.currentFile.endswith(".vvt"):
+            QMessageBox.warning(self, 'Cannot save .vvt files', 
+                                'The currently opened file is an output test file with the results of a previously run test.\n'
+                                'This file is read only and therefore it cannot be saved.\n'
+                                'You may open its original <b>.vvf</b> file to rerun again the test.')
+            return False
 
         try:
             if self.currentFile == "Unnamed.vvf":
@@ -369,7 +409,7 @@ class GUI(QMainWindow):
                 else:
                     return False
 
-            DataFields.saveItemsToFile(self.items, self.currentFile)
+            DataFields.saveItemsToFile(self.projectDataFields, self.items, self.currentFile)
             self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
             self.statusBar.showMessage("File saved.", 3000)
             return True
@@ -400,6 +440,8 @@ class GUI(QMainWindow):
 
         self.statusBar.showMessage("File closed.", 3000)
 
+        self.statusBarPermanent.clear()
+
     def closeEvent(self, event):
         if self.unsavedChanges():
             reply = QMessageBox.question(self, 'Unsaved Changes',
@@ -416,9 +458,9 @@ class GUI(QMainWindow):
         event.accept()
 
     def unsavedChanges(self) -> bool:
-        if self.currentFile:
-            return (self.currentFile == 'file_not_saved.vvf') or not DataFields.areItemsSaved(self.items, self.currentFile)
-        return False
+        if not self.currentFile or self.currentFile.endswith(".vvt"):
+            return False
+        return (self.currentFile == 'file_not_saved.vvf') or not DataFields.areItemsSaved(self.projectDataFields, self.items, self.currentFile)
     
     def importTests(self):
         if self.testWidget.currentTest or self.testWidget.currentlyRunningTest:
@@ -426,21 +468,39 @@ class GUI(QMainWindow):
                                  'There is an unsaved test on the TEST mode.\n'
                                  'Export it and clear it before importing again.')
              return
-        
+
+        if self.unsavedChanges():
+            reply = QMessageBox.question(self, 'Unsaved Changes',
+                                         'You have unsaved changes. Do you want to save them?',
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No |
+                                         QMessageBox.StandardButton.Cancel, QMessageBox.StandardButton.Yes)
+            if reply == QMessageBox.StandardButton.Cancel:
+                return
+            if reply == QMessageBox.StandardButton.Yes:
+                if not self.saveFile():
+                    return
+
         try:
             fileName, _ = QFileDialog.getOpenFileName(self, 'Import Test File', '', 'VVT Files (*.vvt)')
             if not fileName:
                 return 
 
-            self.items = DataFields.loadItemsFromFile(fileName)
-            self.testWidget.currentTest = DataFields.loadTestFromFile(fileName)
+            self.currentFile = fileName
 
+            testData = DataFields.loadTestFromFile(fileName)
+            self.projectDataFields = testData[0]
+            self.testWidget.currentTest = testData[1]
+
+            # While importing a test file, you may not exit to other modes.
             self.changeMode('test')
-            self.setupWidget.runAction('populate-table', None)
-            self.buildWidget.runAction('populate-table', None, None)
+            self.changeMenuBarWidgetButton(self.setupModeAction, None)
+            self.changeMenuBarWidgetButton(self.buildModeAction, None)
+
             self.testWidget.runAction('populate-table', None, None)
+            self.testWidget.runAction('set-read-only', None, True)
 
             self.statusBar.showMessage("Test file imported.", 3000)
+            self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'Could not import test file: {e}')
         return False
@@ -458,18 +518,18 @@ class GUI(QMainWindow):
                                  'Wait for it to end and export it again.')
              return False
         
-        # try:
-        fileName, _ = QFileDialog.getSaveFileName(self, 'Export Test File', '', 'VVT Files (*.vvt)')
-        if not fileName:
-            return False
-        
-        DataFields.saveTestToFile(self.testWidget.currentTest, fileName)
+        try:
+            fileName, _ = QFileDialog.getSaveFileName(self, 'Export Test File', '', 'VVT Files (*.vvt)')
+            if not fileName:
+                return False
+            
+            DataFields.saveTestToFile(self.projectDataFields, self.testWidget.currentTest, fileName)
 
-        Exporter.replacePlaceholders(fileName.split('.')[0] + ".xlsx", self.testWidget.currentTest)
+            Exporter.replacePlaceholders(fileName.split('.')[0] + ".xlsx", self.projectDataFields, self.testWidget.currentTest)
 
-        self.statusBar.showMessage("Test file exported.", 3000)
-        return True
-        # except Exception as e:
-        #     QMessageBox.critical(self, 'Error', f'Could not export test file: {e}')
-        # return False
+            self.statusBar.showMessage("Test file exported.", 3000)
+            return True
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Could not export test file: {e}')
+        return False
         
