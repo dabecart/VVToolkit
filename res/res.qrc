@@ -38,5 +38,7 @@
 
     <file alias="run">run.svg</file>
     <file alias="clear">clear.svg</file>
+
+    <file alias="loading">loading-circle.svg</file>
 </qresource>
 </RCC>

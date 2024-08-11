@@ -20,11 +20,11 @@ import openpyxl.cell
 import openpyxl.worksheet
 from openpyxl.styles import PatternFill, Border, Alignment, Protection, Font
 
-from DataFields import Item, TestDataFields
+from DataFields import Item, TestDataFields, TestResult
 
 from typing import List
 
-def replacePlaceholders(filePath : str, testFields : TestDataFields, items : List[Item]):
+def replacePlaceholders(filePath: str, testFields: TestDataFields, items: List[Item]):
     # Load the Excel model workbook.
     modelPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TestReportModel.xlsx")
     modelWorkbook = openpyxl.load_workbook(modelPath)
@@ -41,7 +41,7 @@ def replacePlaceholders(filePath : str, testFields : TestDataFields, items : Lis
     vfrBlockRange = modelSheet.cell(row=vfrBlockRange.row, column=vfrBlockRange.column+1).value
     vfrBlock      = modelSheet[vfrBlockRange]
     rowStart      = vfrBlock[0][0].row
-    _substituteExcelVariable(destinySheet, rowStart, rowStart+len(vfrBlock), {"testFields" : testFields})
+    _substituteExcelVariable(destinySheet, rowStart, rowStart+len(vfrBlock), {"testFields": testFields})
 
     # Fetch the "test" header and the "iteration" block from the model.
     testBlockRange = _findCellByContent(modelSheet, "Test block:")
@@ -63,10 +63,11 @@ def replacePlaceholders(filePath : str, testFields : TestDataFields, items : Lis
 
         # Edit the newly pasted fields.
         envVars = {
-            "totalTestCount"    : totalTestCount,
-            "itemNumber"        : itemNumber,
-            "testFields"        : testFields,
-            "item"              : item,
+            "TestResult"       : TestResult,
+            "totalTestCount"   : totalTestCount,
+            "itemNumber"       : itemNumber,
+            "testFields"       : testFields,
+            "item"             : item,
         }
         _substituteExcelVariable(destinySheet, rowStart, rowStart+len(testBlock), envVars)
 
@@ -79,8 +80,8 @@ def replacePlaceholders(filePath : str, testFields : TestDataFields, items : Lis
 
             # Edit the newly pasted fields. 
             newEnvVars = {
-                "iterationNumber"   : iterationNumber,
-                "iteration"         : iteration,
+                "iterationNumber"  : iterationNumber,
+                "iteration"        : iteration,
             }
             _substituteExcelVariable(destinySheet, rowStart, rowStart+len(iterationBlock), envVars | newEnvVars)
 
@@ -101,7 +102,7 @@ def _deleteCellRange(cells):
         for cell in row:
             cell.value = ""
 
-def _findCellByContent(excel : openpyxl.worksheet, searchItem : str) -> openpyxl.cell:
+def _findCellByContent(excel: openpyxl.worksheet, searchItem: str) -> openpyxl.cell:
     for row in excel.iter_rows():
         for cell in row:
             if cell.value == searchItem:
@@ -109,7 +110,7 @@ def _findCellByContent(excel : openpyxl.worksheet, searchItem : str) -> openpyxl
     
     return None
 
-def _copyRangeToStartingCell(excel : openpyxl.worksheet, data, startingCell : openpyxl.cell):
+def _copyRangeToStartingCell(excel: openpyxl.worksheet, data, startingCell: openpyxl.cell):
     startingCellRow = startingCell.row
     startingCellCol = startingCell.column
 
@@ -171,7 +172,7 @@ def _copyRangeToStartingCell(excel : openpyxl.worksheet, data, startingCell : op
                 )
 
 # This function substitutes the values inputted on the excel file by the real Python variables.
-def _substituteExcelVariable(excel : openpyxl.worksheet, rowStart : int, rowEnd : int, args):
+def _substituteExcelVariable(excel: openpyxl.worksheet, rowStart: int, rowEnd: int, args):
     for row in excel.iter_rows(min_row=rowStart, max_row = rowEnd-1):
         for cell in row:
             value = cell.value
@@ -184,7 +185,7 @@ def _substituteExcelVariable(excel : openpyxl.worksheet, rowStart : int, rowEnd 
 
             cell.value = value
 
-def _evaluateVariable(code : str, args):
+def _evaluateVariable(code: str, args):
     # Removes the possibility to import libraries or use external functions.
     args["__builtins__"] = {}
     # Variable to store the output of the code.
@@ -195,5 +196,5 @@ def _evaluateVariable(code : str, args):
     exec(code, args)
     out = str(args["out"])
 
-    # Remove all <> from the output
+    # Remove all <> from the output because that will confound the substituteExcelVariable function.
     return re.sub(r'<.*?>', "", out)

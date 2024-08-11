@@ -24,7 +24,7 @@ from DataFields import TestResult
 from Icons import createIcon
 
 class TestContent(QWidget):
-    def __init__(self, item : Item, parent = None) -> None:
+    def __init__(self, item: Item, parent = None) -> None:
         super().__init__(parent)
 
         self.item = item
@@ -73,11 +73,7 @@ class TestContent(QWidget):
             self.outputCmdIndexCombo.setEnabled(False)
         self.outputCmdIndexCombo.currentTextChanged.connect(self.onOutputCmdIndexChanged)
 
-        rerunStr = ""
-        if self.item.wasTestRepeated > 0:
-            plural = "s" if self.item.wasTestRepeated>1 else ""
-            rerunStr = f"This test was repeated {self.item.wasTestRepeated} time{plural}."
-        checkModeLabel = QLabel(f"Checking Mode: {self.item.validationCmd.validationToString(self.item.testResult)} {rerunStr}")
+        checkModeLabel = QLabel(f"Checking Mode: {self.item.validationCmd.validationToString(self.item.testResult)}")
 
         # Visual separator (horizontal line).
         horizontalSeparator = QFrame(self)
@@ -108,6 +104,11 @@ class TestContent(QWidget):
         contentLayout.addWidget(testOutputHeader)
         contentLayout.addWidget(self.testOutputCmdText)
         contentLayout.addWidget(self.testOutputCmdValidation)
+
+        if self.item.wasTestRepeated > 0:
+            plural = "s" if self.item.wasTestRepeated>1 else ""
+            rerunLabel = QLabel(f"This test was repeated {self.item.wasTestRepeated} time{plural}.")
+            contentLayout.addWidget(rerunLabel)
 
         if self.item.validationCmd.usesBuildOutput():
             outputCommandLabel = QLabel("Original output:")
@@ -163,13 +164,13 @@ class TestHeader(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0,0,0,0)
 
-        self.refreshButton = QPushButton(self)
+        self.refreshButton = QPushButton()
         self.refreshButton.setStatusTip('Repeats this test case.')
         icon = createIcon(':test-refresh', self.parent.config)
         icon.setAssociatedWidget(self.refreshButton)
         self.refreshButton.setIcon(icon)
         self.refreshButton.setFixedSize(35, 35)
         self.refreshButton.setIconSize(QSize(30,30))
-        self.refreshButton.clicked.connect(lambda : self.parent.parent.runAction('rerun-test', 'undo', self.parent))
+        self.refreshButton.clicked.connect(lambda: self.parent.parent.runAction('rerun-test', 'undo', self.parent))
 
         layout.addWidget(self.refreshButton)

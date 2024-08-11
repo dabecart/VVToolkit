@@ -12,7 +12,7 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (
-    QMainWindow, QLabel, QMessageBox, QFileDialog, QSizePolicy, QToolBar, QStackedWidget
+    QMainWindow, QLabel, QMessageBox, QFileDialog, QSizePolicy, QToolBar, QStackedWidget, QStatusBar
 )
 from PyQt6.QtGui import QIcon, QPalette, QActionGroup
 
@@ -44,13 +44,13 @@ class GUI(QMainWindow):
         # Stores the configuration of the program.
         self.config = ProgramConfig()
         # The project configuration.
-        self.projectDataFields : TestDataFields = TestDataFields()
+        self.projectDataFields: TestDataFields = TestDataFields()
         # Items read from the file.
-        self.items : List[Item] = []
+        self.items: List[Item] = []
         # Field to save the currently opened file.
         self.currentFile: Optional[str] = None
         # Mode of the current program.
-        self.currentMode : str = None
+        self.currentMode: str = None
         # The currently shown widget on the center of the GUI.
         self.currentWidget = None
 
@@ -123,17 +123,17 @@ class GUI(QMainWindow):
         addItemAction = self.editMenu.addAction('&Add item')
         addItemAction.setShortcut("Alt+N")
         addItemAction.setStatusTip("Add an item to the list.")
-        addItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-add', 'undo'))
+        addItemAction.triggered.connect(lambda: self.currentWidget.runAction('item-add', 'undo'))
 
         removeItemAction = self.editMenu.addAction('&Remove item')
         removeItemAction.setShortcut("Del")
         removeItemAction.setStatusTip("Remove an item from the list.")
-        removeItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-remove', 'undo'))
+        removeItemAction.triggered.connect(lambda: self.currentWidget.runAction('item-remove', 'undo'))
 
         duplicateItemAction = self.editMenu.addAction('&Duplicate item')
         duplicateItemAction.setShortcut("Alt+D")
         duplicateItemAction.setStatusTip("Duplicate an item from the list.")
-        duplicateItemAction.triggered.connect(lambda : self.currentWidget.runAction('item-duplicate', 'undo'))
+        duplicateItemAction.triggered.connect(lambda: self.currentWidget.runAction('item-duplicate', 'undo'))
 
         self.editMenu.addSeparator()
 
@@ -152,17 +152,17 @@ class GUI(QMainWindow):
 
         self.setupModeAction = settingsMenu.addAction('&SETUP mode')
         self.setupModeAction.setStatusTip("Change to SETUP mode.")
-        self.setupModeAction.triggered.connect(lambda : self.changeMode('setup'))
+        self.setupModeAction.triggered.connect(lambda: self.changeMode('setup'))
         self.setupModeAction.setCheckable(True)
 
         self.buildModeAction = settingsMenu.addAction('&BUILD mode')
         self.buildModeAction.setStatusTip("Change to BUILD mode.")
-        self.buildModeAction.triggered.connect(lambda : self.changeMode('build'))
+        self.buildModeAction.triggered.connect(lambda: self.changeMode('build'))
         self.buildModeAction.setCheckable(True)
 
         self.testModeAction = settingsMenu.addAction('&TEST mode')
         self.testModeAction.setStatusTip("Change to TEST mode.")
-        self.testModeAction.triggered.connect(lambda : self.changeMode('test'))
+        self.testModeAction.triggered.connect(lambda: self.changeMode('test'))
         self.testModeAction.setCheckable(True)
 
         actionGroup = QActionGroup(self)
@@ -233,7 +233,7 @@ class GUI(QMainWindow):
         settingsToolBar.addAction(self.testModeAction)
 
         # Bottom status bar
-        self.statusBar = self.statusBar()
+        self.statusBar : QStatusBar = self.statusBar()
         self.statusBar.showMessage("Ready.", 3000)
         self.statusBarPermanent = QLabel("")
         self.statusBar.addPermanentWidget(self.statusBarPermanent)
@@ -251,13 +251,13 @@ class GUI(QMainWindow):
 
         self.changeMode(None)
 
-    def setEnableToolbars(self, enable : bool):
+    def setEnableToolbars(self, enable: bool):
         self.menubar.setEnabled(enable)
         toolbars = self.findChildren(QToolBar)
         for t in toolbars:
             t.setEnabled(enable)
 
-    def changeMode(self, mode : str | None):
+    def changeMode(self, mode: str | None):
         if mode is None:
             self.centralWidget().hide()
             # Disable some of the actions.
@@ -317,7 +317,7 @@ class GUI(QMainWindow):
         self.currentMode = mode
         return True
 
-    def changeMenuBarWidgetButton(self, action, selected : bool | None):
+    def changeMenuBarWidgetButton(self, action, selected: bool | None):
         if selected is None:
             action.setEnabled(False)
         else:
@@ -399,7 +399,9 @@ class GUI(QMainWindow):
             QMessageBox.warning(self, 'Cannot save .vvt files', 
                                 'The currently opened file is an output test file with the results of a previously run test.\n'
                                 'This file is read only and therefore it cannot be saved.\n'
-                                'You may open its original <b>.vvf</b> file to rerun again the test.')
+                                'You may open its original .vvf file to rerun again the test.\n'
+                                'TIP: If you have lost the original, you may take this .vvt file and create a copy, '
+                                'then change its extension to .vvf. Try to open that file, that should work!')
             return False
 
         try:
@@ -497,8 +499,8 @@ class GUI(QMainWindow):
             self.changeMenuBarWidgetButton(self.setupModeAction, None)
             self.changeMenuBarWidgetButton(self.buildModeAction, None)
 
-            self.testWidget.runAction('populate-table', None, None)
             self.testWidget.runAction('set-read-only', None, True)
+            self.testWidget.runAction('populate-table', None, None)
 
             self.statusBar.showMessage("Test file imported.", 3000)
             self.statusBarPermanent.setText(f"Current file: <b>{self.currentFile}</b>")

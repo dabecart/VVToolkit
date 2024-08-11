@@ -24,11 +24,11 @@ from Icons import TrackableIcon
 
 @dataclass
 class ProgramConfig:
-    validateCommands : bool = field(default=False)
-    colorTheme       : str  = field(default="dark")
+    validateCommands: bool = field(default=False)
+    colorTheme      : str  = field(default="dark")
 
 class SettingsWindow(QDialog):
-    def __init__(self, config : ProgramConfig, parent = None):
+    def __init__(self, config: ProgramConfig, parent = None):
         super().__init__(parent)
         self.parent = parent
 

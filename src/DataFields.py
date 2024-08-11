@@ -20,6 +20,8 @@ from time import perf_counter
 from ast import literal_eval
 from re import sub
 
+from datetime import datetime
+
 class TestResult:
     NOTRUN = 0
     OK = 1
@@ -27,26 +29,54 @@ class TestResult:
     UNDEFINED = 3
     NOT_ALL_OK = 4
 
-    def getResultColor(result):
-        match result:
-            case TestResult.OK:         return '#17e5ae'
-            case TestResult.ERROR:      return '#e51760'
-            case TestResult.UNDEFINED:  return '#f7c90f'
-            case TestResult.NOT_ALL_OK: return '#f7c90f'
-            case _:                     return '#000000'
+    @classmethod
+    def getResultColor(cls, result):
+        mapping = {
+            TestResult.OK:         '#17e5ae',
+            TestResult.ERROR:      '#e51760',
+            TestResult.UNDEFINED:  '#f7c90f',
+            TestResult.NOT_ALL_OK: '#f7c90f',
+        }
+        return mapping.get(result, '#000000')
 
+    @classmethod
+    def toExcelColor(cls, result):
+        mapping = {
+            TestResult.OK:         'green',
+            TestResult.ERROR:      'red',
+            TestResult.UNDEFINED:  'yellow',
+            TestResult.NOT_ALL_OK: 'yellow',
+        }            
+        return mapping.get(result, 'red')
+
+    @classmethod
+    def toString(cls, result):
+        mapping = {
+            TestResult.OK:         'Successful',
+            TestResult.ERROR:      'Unsuccessful',
+            TestResult.UNDEFINED:  'Undefined result',
+            TestResult.NOT_ALL_OK: 'Not all tests were successful',
+        }            
+        return mapping.get(result, 'Undefined result type')
+    
 class Operation():
-    operations : List[str] =["Same output", "Conditional output"]
+    operations: List[str] =["Same output", "Conditional output"]
     SAME = 0
     COMPARISON = 1
 
 @dataclass(eq=True)
 class ResultCommand:
     output: str             = field(default="")
-    returnCode : int        = field(default=None)
-    executionTime : float   = field(default=0, compare=False)
+    returnCode: int         = field(default=None)
+    executionTime: float    = field(default=0, compare=False)
+    timeOfExecution : str   = field(default="", compare=False)
 
-    result : int            = field(default=TestResult.NOTRUN, compare=False)
+    result: int             = field(default=TestResult.NOTRUN, compare=False)
+
+    def deltaOfExecution(self, startExecutionTime: str):
+        t = datetime.strptime(self.timeOfExecution, "%d/%m/%Y %H:%M:%S.%f")
+        t0 = datetime.strptime(startExecutionTime, "%d/%m/%Y %H:%M:%S.%f")
+        return str(t - t0)
 
 @dataclass
 class ValidationCommand:
@@ -54,12 +84,12 @@ class ValidationCommand:
 
     operation: int      = field(default=Operation.SAME)
     operator: str       = field(default='==')
-    operatorVal : str   = field(default='')
+    operatorVal: str    = field(default='')
 
     def usesBuildOutput(self):
         return self.operation == Operation.SAME
 
-    def validate(self, originalResult : ResultCommand, testResult : ResultCommand, prevTestResult : TestResult) -> TestResult:
+    def validate(self, originalResult: ResultCommand, testResult: ResultCommand, prevTestResult: TestResult) -> TestResult:
         match self.operation:
             case Operation.SAME:
                 currentTestResult = originalResult==testResult
@@ -154,9 +184,9 @@ class ValidationCommand:
         return ret
 
     # Returns the function before this one changing the color of bold words.
-    def validationToString(self, result : TestResult | None = None) -> str:
+    def validationToString(self, result: TestResult | None = None) -> str:
         # Get the text.
-        ret : str = self.toString()
+        ret: str = self.toString()
         if result is not None:
             # Add color to signal the reason the test successes or fails.
             ret = ret.replace('<b>', f'<span style="color:{TestResult.getResultColor(result)}; font-weight:bold;">', 1)
@@ -164,9 +194,9 @@ class ValidationCommand:
         return ret
     
     # Similar to before but the text changes depending on the result.
-    def resultToString(self, result : TestResult | None = None) -> str:
+    def resultToString(self, result: TestResult | None = None) -> str:
         # Get the text.
-        ret : str = self.toString()
+        ret: str = self.toString()
 
         # Change "must be" for "is" or "is not".
         match result:
@@ -181,10 +211,10 @@ class ValidationCommand:
                 ret = ret.replace('must not', 'does not')
 
             case TestResult.UNDEFINED:
-                ret = "This test result <b>was not conclusive</b>. " + ret
+                ret = "This test result <b>was not conclusive</b>."
             
             case TestResult.NOT_ALL_OK:
-                ret = "This test result had <b>mixed answers</b> and it is not conclusive." + ret
+                ret = "This test result had <b>mixed answers</b> and therefore it is not conclusive."
             
             case _:
                 print(f"Unexpected result \"{result}\" on resultToString.")
@@ -203,12 +233,12 @@ class Item:
     repetitions: int                    = field(default=1)
     enabled: bool                       = field(default=True)
     runcode: str                        = field(default="")
-    result : List[ResultCommand]        = field(default_factory=lambda: [])
-    validationCmd : ValidationCommand   = field(default_factory=lambda: ValidationCommand())
+    result: List[ResultCommand]         = field(default_factory=lambda: [])
+    validationCmd: ValidationCommand    = field(default_factory=lambda: ValidationCommand())
     
-    testResult : int                    = field(default=TestResult.NOTRUN)
-    testOutput : List[ResultCommand]    = field(default_factory=lambda: [])
-    wasTestRepeated : int               = field(default=0)
+    testResult: int                     = field(default=TestResult.NOTRUN)
+    testOutput: List[ResultCommand]     = field(default_factory=lambda: [])
+    wasTestRepeated: int                = field(default=0)
 
     def __lt__(self, other):
         return self.id < other.id
@@ -247,29 +277,31 @@ class Item:
     def _execute(self, resultOutputSave):
         commandArgs = shlex.split(self.runcode)
         for _ in range(self.repetitions):
+            tOfExec = datetime.now().strftime("%d/%m/%Y %H:%M:%S.%f")
             startTime = perf_counter()
             runResult = subprocess.run(commandArgs, stdout=subprocess.PIPE)
             executionTime = perf_counter() - startTime
             resultOutputSave.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
                                                   returnCode=runResult.returncode,
-                                                  executionTime=executionTime))
+                                                  executionTime=executionTime,
+                                                  timeOfExecution=tOfExec))
 
 @dataclass(eq=True)
 class TestDataFields:
-    name : str      = field(default="")
-    project : str   = field(default="")
-    date : str      = field(default="", compare=False)
-    testCount : str = field(default="", compare=False)
-    author : str    = field(default="")
-    conductor : str = field(default="")
+    name: str      = field(default="")
+    project: str   = field(default="")
+    date: str      = field(default="", compare=False)
+    testCount: str = field(default="", compare=False)
+    author: str    = field(default="")
+    conductor: str = field(default="")
 
     def missingFields(self) -> List[str]:
         classDict = asdict(self)
         return [key for key, val in classDict.items() if val == ""]
 
-def areItemsSaved(testDataFields : TestDataFields, items : List[Item], filename : str) -> bool:
+def areItemsSaved(testDataFields: TestDataFields, items: List[Item], filename: str) -> bool:
     with open(filename, 'r') as file:
-        jsonList : List = json.load(file)
+        jsonList: List = json.load(file)
         
         testFields = {field.name for field in fields(TestDataFields)}
         # The test fields should be the first on the file.
@@ -294,7 +326,7 @@ def areItemsSaved(testDataFields : TestDataFields, items : List[Item], filename 
                 return False
         return True
 
-def saveItemsToFile(testDataFields : TestDataFields, items: List[Item], filename: str) -> None:
+def saveItemsToFile(testDataFields: TestDataFields, items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
         outputItems = []
         for item in items:
@@ -306,13 +338,13 @@ def saveItemsToFile(testDataFields : TestDataFields, items: List[Item], filename
             
         json.dump([asdict(testDataFields), outputItems], file)
 
-def saveTestToFile(testDataFields : TestDataFields, items: List[Item], filename: str) -> None:
+def saveTestToFile(testDataFields: TestDataFields, items: List[Item], filename: str) -> None:
     with open(filename, 'w') as file:
         json.dump([asdict(testDataFields), [asdict(item) for item in items]], file)
 
 def loadItemsFromFile(filename: str) -> List[Item]:
     with open(filename, 'r') as file:
-        jsonList : List = json.load(file)
+        jsonList: List = json.load(file)
         
         testFields = {field.name for field in fields(TestDataFields)}
         # The test fields should be the first on the file.
@@ -346,7 +378,7 @@ def loadItemsFromFile(filename: str) -> List[Item]:
     
 def loadTestFromFile(filename: str):
     with open(filename, 'r') as file:
-        jsonList : List = json.load(file)
+        jsonList: List = json.load(file)
         
         testFields = {field.name for field in fields(TestDataFields)}
         # The test fields should be the first on the file.

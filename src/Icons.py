@@ -66,21 +66,21 @@ class TrackableIcon(QIcon):
         
         match theme.colorTheme:
             case 'light':
-                color = "black"
+                color = "#444"
             case 'dark':
-                color = "white"
+                color = "#FFF"
 
         for icon in cls._instances:
             icon.recolor(color)
 
-def createIcon(iconPath : str, theme = None) -> TrackableIcon | QIcon:
+def createIcon(iconPath: str, theme = None) -> TrackableIcon | QIcon:
     if theme is None:
         return QIcon(iconPath)
     
     if type(theme) is str:
-        color : str = theme
+        color: str = theme
     else:
-        color : str = theme.colorTheme
+        color: str = theme.colorTheme
 
     match color:
         case 'light':
@@ -92,7 +92,7 @@ def createIcon(iconPath : str, theme = None) -> TrackableIcon | QIcon:
         
     return TrackableIcon(iconPath, recolorSVG(iconPath, color))
 
-def recolorSVG(icon_path : str, color : str) -> QIcon:
+def recolorSVG(icon_path: str, color: str) -> QIcon:
     # Load the SVG data from the resource
     file = QFile(icon_path)
     if not file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text):

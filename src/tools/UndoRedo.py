@@ -2,14 +2,14 @@ class UndoRedo:
     gui = None
     undoStack = []
     redoStack = []
-    cmdCalledFromHere : bool = False
+    cmdCalledFromHere: bool = False
 
     @staticmethod
     def setGUI(gui):
         UndoRedo.gui = gui
 
     @staticmethod
-    def addAction(buffer : str, arg):
+    def addAction(buffer: str, arg):
         if buffer == 'undo':
             # A new action has been added.
             UndoRedo.undoStack.append(arg)

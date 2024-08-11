@@ -12,16 +12,18 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QComboBox, QMessageBox)
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QComboBox, QMessageBox, QSizePolicy
+)
 from PyQt6.QtCore import Qt, QSize
 
 from widgets.CollapsibleBox import CollapsibleBox
 from widgets.TestContent import TestContent, TestHeader
 from widgets.ContainerWidget import ContainerWidget
-from DataFields import Item, TestResult, TestDataFields
+from DataFields import Item, TestResult
 from tools.ParallelExecution import ParallelLoopExecution, ParallelExecution
 from tools.SignalBlocker import SignalBlocker
-from SettingsWindow import ProgramConfig
+from widgets.LoadingCircle import LoadingCircle
 
 from Icons import createIcon
 
@@ -34,22 +36,24 @@ class TestWidget(QWidget):
         super().__init__()
 
         self.parent = parent
-        self.currentTest : List[Item] = []
+        self.currentTest: List[Item] = []
         self.currentlyRunningTest = False
+        self.readOnly = False
 
         layout = QVBoxLayout()
         self.setLayout(layout)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self.topBar = ContainerWidget()
-        topBarLayout = QHBoxLayout(self.topBar)
+        self.topBar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
+        self.topBarLayout = QHBoxLayout(self.topBar)
 
         self.runAllButton = QPushButton("New test")
         icon = createIcon(':run', self.parent.config)
         icon.setAssociatedWidget(self.runAllButton)
         self.runAllButton.setIcon(icon)
         self.runAllButton.setStatusTip("Starts the testing process.")
-        self.runAllButton.clicked.connect(lambda : self.runAction('run-all-tests', None))
+        self.runAllButton.clicked.connect(lambda: self.runAction('run-all-tests', None))
         self.runAllButton.setFixedWidth(120)
         self.runAllButton.setFixedHeight(30)
         self.runAllButton.setIconSize(QSize(20,20))
@@ -59,7 +63,7 @@ class TestWidget(QWidget):
         icon.setAssociatedWidget(self.clearAllButton)
         self.clearAllButton.setIcon(icon)
         self.clearAllButton.setStatusTip("Clears this test.")
-        self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-tests', None))
+        self.clearAllButton.clicked.connect(lambda: self.runAction('clear-all-tests', None))
         self.clearAllButton.setFixedWidth(120)
         self.clearAllButton.setFixedHeight(30)
         self.clearAllButton.setIconSize(QSize(20,20))
@@ -73,21 +77,26 @@ class TestWidget(QWidget):
         self.categoryCombo.setEnabled(False)
         self.categoryCombo.currentTextChanged.connect(lambda: self.populateTable(self.categoryCombo.currentText()))
 
-        topBarLayout.addWidget(self.runAllButton)
-        topBarLayout.addWidget(self.clearAllButton)
-        topBarLayout.addStretch()
-        topBarLayout.addWidget(self.categoryCombo)
+        self.topBarLayout.addWidget(self.runAllButton)
+        self.topBarLayout.addWidget(self.clearAllButton)
+        self.topBarLayout.addStretch()
+        self.topBarLayout.addWidget(self.categoryCombo)
 
         layout.addWidget(self.topBar)
 
         scrollArea = QScrollArea(self)
         scrollArea.setWidgetResizable(True)
+        scrollArea.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.addWidget(scrollArea)
 
         self.scrollContent = ContainerWidget()
         scrollArea.setWidget(self.scrollContent)
+
         self.scrollLayout = QVBoxLayout(self.scrollContent)
+
         self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scrollLayout.setSpacing(0)
+        self.scrollLayout.setContentsMargins(0,0,0,0)
 
     def populateTable(self, categoryFilter):
         if not self.currentTest:
@@ -108,9 +117,13 @@ class TestWidget(QWidget):
                 if icon is None:
                     print(f"Missing test result for item {item.id} on populateTable")
                     continue
-                self.scrollLayout.addWidget(CollapsibleBox(icon, item, self.parent.config, TestHeader, TestContent, self))
+                # If set as readOnly, pass a dummy container to not show the rerun button.
+                self.scrollLayout.addWidget(
+                    CollapsibleBox(icon, item, self.parent.config, 
+                                   ContainerWidget if self.readOnly else TestHeader, 
+                                   TestContent, self))
 
-    def _getIconFromItem(self, item : Item) -> str:
+    def _getIconFromItem(self, item: Item) -> str:
         match item.testResult:
             case TestResult.OK:
                 return ':test-ok'
@@ -123,7 +136,7 @@ class TestWidget(QWidget):
             case _:
                 return None
 
-    def _filterItemByCategory(self, item : Item, categoryFilter : str) -> bool:
+    def _filterItemByCategory(self, item: Item, categoryFilter: str) -> bool:
         match categoryFilter:
             case 'All categories':
                 return True
@@ -151,23 +164,38 @@ class TestWidget(QWidget):
                 self.categoryCombo.setPlaceholderText("Categories")
                 self.categoryCombo.setCurrentIndex(0)
             self.currentlyRunningTest = False
+            
+            # Remove the loading circle from the scroll window.
+            widgAtBottomOfScroll = self.scrollLayout.itemAt(self.scrollLayout.count()-1).widget()
+            if type(widgAtBottomOfScroll) is LoadingCircle:
+                widgAtBottomOfScroll.setParent(None)
+
+            # Remove the LoadingCircle from the upper button bar.
+            widgAtTopBar = self.topBarLayout.itemAt(2).widget()
+            if type(widgAtTopBar) is LoadingCircle:
+                widgAtTopBar.setParent(None)
 
         def updateFieldsAfterRun(args):
-            item : Item = args[0]
-            testW : TestWidget = args[1]
+            item: Item = args[0]
+            testW: TestWidget = args[1]
 
             icon = self._getIconFromItem(item)
             if icon is None:
                 print(f"Missing test result for item {item.id} on UpdateFieldsAfterRun")
                 return
             
-            testW.scrollLayout.addWidget(CollapsibleBox(icon, item, testW.parent.config, TestHeader, TestContent, testW))
+            testW.scrollLayout.insertWidget(testW.scrollLayout.count()-1, 
+                                            CollapsibleBox(icon, item, testW.parent.config, TestHeader, TestContent, testW))
             testW.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
             # Add the category to the combo if its not already inside.
             if testW.categoryCombo.findText(item.category) == -1:
                 testW.categoryCombo.addItem(item.category)
 
         if action == 'run-all-tests':
+            if self.readOnly:
+                self.currentlyRunningTest = False
+                return
+    
             if self.currentTest:
                 reply = QMessageBox.question(self, 'Clear all tests for new test?',
                                             'You are about to begin a new test.\n' 
@@ -176,6 +204,14 @@ class TestWidget(QWidget):
                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                             QMessageBox.StandardButton.Yes)
                 if reply == QMessageBox.StandardButton.No:
+                    self.currentlyRunningTest = False
+                    return
+                elif reply == QMessageBox.StandardButton.Yes:
+                    # This is so it can enter the clear-all function.
+                    self.currentlyRunningTest = False
+                    self.runAction('clear-all-tests', None, False)
+                    self.currentlyRunningTest = True
+                else:
                     self.currentlyRunningTest = False
                     return
             
@@ -189,8 +225,13 @@ class TestWidget(QWidget):
                 self.currentlyRunningTest = False
                 return
 
-            self.parent.projectDataFields.date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            self.parent.projectDataFields.date = datetime.now().strftime("%d/%m/%Y %H:%M:%S.%f")
             self.parent.projectDataFields.testCount = len(funcArg)
+
+            # Add loading circle to the right of the two top buttons.
+            loadcircle = LoadingCircle(20,20)
+            loadcircle.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.topBarLayout.insertWidget(2, loadcircle)
 
             self.topBar.setEnabled(False)
             self.parent.setEnableToolbars(False)
@@ -199,10 +240,16 @@ class TestWidget(QWidget):
                 self.categoryCombo.setPlaceholderText("Running...")
                 self.categoryCombo.setEnabled(False)
 
-            self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
+            self.scrollLayout.addWidget(LoadingCircle(60,60))
+
+            self.pex = ParallelLoopExecution(funcArg, lambda args: args[0].test(), lambda args: updateFieldsAfterRun(args), lambda: onFinishRun(self))
             self.pex.run()
 
         elif action == 'clear-all-tests':
+            if self.readOnly:
+                self.currentlyRunningTest = False
+                return
+            
             if len(args) > 0 and args[0]:
                 reply = QMessageBox.question(self, 'Clear all tests?',
                                             'You will clear all test results.\nAre you sure about it?',
@@ -225,9 +272,13 @@ class TestWidget(QWidget):
             self.currentlyRunningTest = False
 
         elif action == 'rerun-test':
+            if self.readOnly:
+                self.currentlyRunningTest = False
+                return
+
             # This item belongs to the self.currentTest (from the deep copy).
-            rerunBox : CollapsibleBox = args[0]
-            rerunItem : Item = rerunBox.item
+            rerunBox: CollapsibleBox = args[0]
+            rerunItem: Item = rerunBox.item
 
             # This item will be set as rerun.
             rerunItem.wasTestRepeated += 1
@@ -246,9 +297,9 @@ class TestWidget(QWidget):
                 self.categoryCombo.setEnabled(False)
 
             def updateBoxAfterRun(args):
-                rerunBox : CollapsibleBox = args[0]
-                item : Item = rerunBox.item
-                testW : TestWidget = args[1]
+                rerunBox: CollapsibleBox = args[0]
+                item: Item = rerunBox.item
+                testW: TestWidget = args[1]
                 boxWasOpened = rerunBox.content.isVisible()
 
                 icon = self._getIconFromItem(item)
@@ -283,6 +334,7 @@ class TestWidget(QWidget):
 
         elif action == 'set-read-only':
             self.currentlyRunningTest = False
+            self.readOnly = args[0]
             self.runAllButton.setDisabled(args[0])
             self.clearAllButton.setDisabled(args[0])
             if args[0]:

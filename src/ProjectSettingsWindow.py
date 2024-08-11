@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from DataFields import TestDataFields
 
 class ProjectSettingsWindow(QDialog):
-    def __init__(self, testDataFields : TestDataFields, readOnly : bool, parent = None):
+    def __init__(self, testDataFields: TestDataFields, readOnly: bool, parent = None):
         super().__init__(parent)
         self.parentWindow = parent
         self.dataFields = testDataFields

@@ -51,14 +51,14 @@ class SetupWidget(QWidget):
         # Create a widget for the buttons
         self.addButton = QPushButton(createIcon(':item-add', "green"), "Add Item")
         self.addButton.setStatusTip('Add a new item to the table.')
-        self.addButton.clicked.connect(lambda : self.runAction('item-add', 'undo'))
+        self.addButton.clicked.connect(lambda: self.runAction('item-add', 'undo'))
         self.addButton.setFixedWidth(120)
         self.addButton.setFixedHeight(30)
         self.addButton.setIconSize(QSize(20,20))
 
         self.removeButton = QPushButton(createIcon(':item-remove', "red"), "Remove Item")
         self.removeButton.setStatusTip('Remove the selected item from the table.')
-        self.removeButton.clicked.connect(lambda : self.runAction('item-remove', 'undo'))
+        self.removeButton.clicked.connect(lambda: self.runAction('item-remove', 'undo'))
         self.removeButton.setFixedWidth(120)
         self.removeButton.setFixedHeight(30)
         self.removeButton.setIconSize(QSize(20,20))
@@ -449,7 +449,7 @@ class SetupWidget(QWidget):
             return dupeItem
         return None
 
-    def runAction(self, action : str, actionStack : str | None, *args):
+    def runAction(self, action: str, actionStack: str | None, *args):
         if action == 'item-add':
             item = self.addItem(None if len(args) == 0 else args[0])
 
@@ -474,5 +474,5 @@ class SetupWidget(QWidget):
             elif action == 'item-remove':
                 UndoRedo.addAction(actionStack, ('item-add', item))
 
-    def getItemByRow(self, row : int) -> Optional[Item]:
+    def getItemByRow(self, row: int) -> Optional[Item]:
         return self.tableWidget.item(row, 0).associatedItem

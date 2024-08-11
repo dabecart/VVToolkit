@@ -1,5 +1,7 @@
 Resources taken from [Industrial Sharp UI Icons Collection](https://www.svgrepo.com/collection/industrial-sharp-ui-icons/), under MIT license. Some of them were slightly modified by @dabecart.
 
+The loading circle is courtesy of Pau Giner. Taken from [Wikimedia](https://commons.wikimedia.org/wiki/File:Loading_indicator_circle.svg).
+
 # Generate the resource pack
 
 You'll need the following module installed in Python to run the next command, so install it using:

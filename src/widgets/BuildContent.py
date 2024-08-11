@@ -23,7 +23,7 @@ from widgets.ContainerWidget import ContainerWidget
 from Icons import createIcon
 
 class BuildContent(QWidget):
-    def __init__(self, item : Item, parent = None) -> None:
+    def __init__(self, item: Item, parent = None) -> None:
         super().__init__(parent)
 
         self.item = item
@@ -162,23 +162,23 @@ class BuildHeader(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0,0,0,0)
 
-        self.runButton = QPushButton(self)
+        self.runButton = QPushButton()
         self.runButton.setStatusTip('Runs this test case.')
         icon = createIcon(':run', self.parent.config)
         icon.setAssociatedWidget(self.runButton)
         self.runButton.setIcon(icon)
         self.runButton.setFixedSize(35, 35)
         self.runButton.setIconSize(QSize(30,30))
-        self.runButton.clicked.connect(lambda : self.parent.parent.runAction('run-item', 'undo', self.parent.content))
+        self.runButton.clicked.connect(lambda: self.parent.parent.runAction('run-item', 'undo', self.parent.content))
 
-        self.clearButton = QPushButton(self)
+        self.clearButton = QPushButton()
         self.clearButton.setStatusTip('Clears the results of this test case.')
         icon = createIcon(':clear', self.parent.config)
         icon.setAssociatedWidget(self.clearButton)
         self.clearButton.setIcon(icon)
         self.clearButton.setFixedSize(35, 35)
         self.clearButton.setIconSize(QSize(30,30))
-        self.clearButton.clicked.connect(lambda : self.parent.parent.runAction('clear-item', 'undo', self.parent.content))
+        self.clearButton.clicked.connect(lambda: self.parent.parent.runAction('clear-item', 'undo', self.parent.content))
 
         layout.addWidget(self.runButton)
         layout.addWidget(self.clearButton)

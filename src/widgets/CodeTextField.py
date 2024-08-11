@@ -25,7 +25,7 @@ class CodeTextField(QTextEdit):
         self.setFont(QFont("Courier New", self.font().pointSize()))
         self.highlighter = BashHighlighter(self.document())
         
-    def getCommand(self, validateCommand : bool) -> Optional[str]:
+    def getCommand(self, validateCommand: bool) -> Optional[str]:
         commandText = self.toPlainText().strip()
         if validateCommand and not self._validateCommand(commandText):
             return None

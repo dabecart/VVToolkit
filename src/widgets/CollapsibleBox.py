@@ -11,7 +11,7 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel)
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QGraphicsOpacityEffect)
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt, QPropertyAnimation, QAbstractAnimation
 
@@ -19,8 +19,10 @@ from DataFields import Item
 from Icons import createIcon
 
 class CollapsibleBox(QWidget):
-    def __init__(self, iconName : str, item : Item, config, contentHeader : type, contentWidget : type, parent=None):
+    def __init__(self, iconName: str, item: Item, config, contentHeader: type, contentWidget: type, parent=None):
         super().__init__(parent)
+
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
 
         self.item = item
         self.config = config
@@ -60,12 +62,7 @@ class CollapsibleBox(QWidget):
         self.header.setFixedHeight(self.header.sizeHint().height())
         self.header.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
                 border: none;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 50);
             }
         """)
 
@@ -98,8 +95,17 @@ class CollapsibleBox(QWidget):
 
         self.setStyle()
 
+        # Fade in on box creation.
+        opacityEffect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(opacityEffect)
+        self.fadeAnim = QPropertyAnimation(opacityEffect, b'opacity')
+        self.fadeAnim.setStartValue(0)
+        self.fadeAnim.setEndValue(1)
+        self.fadeAnim.setDuration(500)
+        self.fadeAnim.start()
+
     def setStyle(self):
-        midColor : QColor = self.parent.palette().color(QPalette.ColorRole.Window)
+        midColor: QColor = self.parent.palette().color(QPalette.ColorRole.Window)
         brightness = (midColor.red() * 0.299 + midColor.green() * 0.587 + midColor.blue() * 0.114) / 255
         if brightness < 0.5:
             midColor = midColor.lighter(150)

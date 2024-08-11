@@ -40,14 +40,14 @@ class BuildWidget(QWidget):
 
         self.runAllButton = QPushButton("Run all")
         self.runAllButton.setStatusTip("Runs all test cases without output.")
-        self.runAllButton.clicked.connect(lambda : self.runAction('run-all-items', None))
+        self.runAllButton.clicked.connect(lambda: self.runAction('run-all-items', None))
         self.runAllButton.setFixedWidth(120)
         self.runAllButton.setFixedHeight(30)
         self.runAllButton.setIconSize(QSize(20,20))
 
         self.clearAllButton = QPushButton("Clear all")
         self.clearAllButton.setStatusTip("Clears the outputs of all test cases.")
-        self.clearAllButton.clicked.connect(lambda : self.runAction('clear-all-items', None))
+        self.clearAllButton.clicked.connect(lambda: self.runAction('clear-all-items', None))
         self.clearAllButton.setFixedWidth(120)
         self.clearAllButton.setFixedHeight(30)
         self.clearAllButton.setIconSize(QSize(20,20))
@@ -85,14 +85,19 @@ class BuildWidget(QWidget):
 
         layout.addWidget(self.topBar)
 
-        self.scrollArea = QScrollArea()
-        self.scrollArea.setWidgetResizable(True)
-        layout.addWidget(self.scrollArea)
+        scrollArea = QScrollArea(self)
+        scrollArea.setWidgetResizable(True)
+        scrollArea.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(scrollArea)
 
         self.scrollContent = ContainerWidget()
-        self.scrollArea.setWidget(self.scrollContent)
+        scrollArea.setWidget(self.scrollContent)
+
         self.scrollLayout = QVBoxLayout(self.scrollContent)
+        
         self.scrollLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scrollLayout.setSpacing(0)
+        self.scrollLayout.setContentsMargins(0,0,0,0)
 
     def showHideDisabledButtonClicked(self):
         self.showDisabled = not self.showDisabled
@@ -106,7 +111,7 @@ class BuildWidget(QWidget):
         newIcon.setAssociatedWidget(self.showHideDisabledButton)
         self.showHideDisabledButton.setIcon(newIcon)
 
-    def populateTable(self, categoryFilter : str | None):
+    def populateTable(self, categoryFilter: str | None):
         # Delete all widgets if there are new items or if they are updated. 
         # This is a safety measure for the order and content of the widgets.
         itemsThatShouldBeShown = []
@@ -165,22 +170,22 @@ class BuildWidget(QWidget):
                 self.categoryCombo.addItem('All categories')
                 self.categoryCombo.addItems(categoriesList)
 
-    def _filterItemByCategory(self, item : Item, categoryFilter : str) -> bool:
+    def _filterItemByCategory(self, item: Item, categoryFilter: str) -> bool:
         match categoryFilter:
             case 'All categories':
                 return True
             case _:
                 return item.category == categoryFilter
 
-    def runAction(self, action : str, actionStack : str | None, *args):
+    def runAction(self, action: str, actionStack: str | None, *args):
         def onFinishRun(args):
             args.topBar.setEnabled(True)
             self.parent.setEnableToolbars(True)
 
         def updateFieldsAfterRun(args):
-            content : BuildContent = args[0]
-            item : Item = content.item
-            buildWidget : BuildWidget = args[1]
+            content: BuildContent = args[0]
+            item: Item = content.item
+            buildWidget: BuildWidget = args[1]
 
             content.outputCmdText.setText(item.result[0].output)
             content.outputReturnValue.setText(f"Return: {item.result[0].returnCode}\nExecution time: {item.result[0].executionTime:.2f} ms")
@@ -190,8 +195,8 @@ class BuildWidget(QWidget):
             buildWidget.parent.statusBar.showMessage(f"Item {item.id} successfully run.", 3000)
 
         if action == 'run-item':
-            content : BuildContent = args[0]
-            item : Item = content.item
+            content: BuildContent = args[0]
+            item: Item = content.item
 
             if not item.enabled or item.repetitions <= 0:
                 return
@@ -207,13 +212,13 @@ class BuildWidget(QWidget):
             content.outputCmdIndexCombo.setEnabled(False)
 
             runArgs = [[content, self]]
-            self.pex = ParallelLoopExecution(runArgs, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
+            self.pex = ParallelLoopExecution(runArgs, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda: onFinishRun(self))
             self.pex.run()
 
         elif action == 'run-all-items':
             boxes = []
             for i in range(self.scrollLayout.count()):
-                content : BuildContent = self.scrollLayout.itemAt(i).widget().content
+                content: BuildContent = self.scrollLayout.itemAt(i).widget().content
                 # Only run those that are enabled and are shown on screen.
                 if content.item.isEnabled() and self._filterItemByCategory(content.item, self.categoryCombo.currentText()):
                     boxes.append([content, self])
@@ -226,12 +231,12 @@ class BuildWidget(QWidget):
                 content.outputCmdIndexCombo.setCurrentIndex(-1)
                 content.outputCmdIndexCombo.setEnabled(False)
 
-            self.pex = ParallelLoopExecution(boxes, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda : onFinishRun(self))
+            self.pex = ParallelLoopExecution(boxes, lambda args: args[0].item.run(), lambda args: updateFieldsAfterRun(args), lambda: onFinishRun(self))
             self.pex.run()
 
         elif action == 'clear-item':
-            content : BuildContent = args[0]
-            item : Item = content.item
+            content: BuildContent = args[0]
+            item: Item = content.item
 
             if not item.enabled:
                 return
@@ -263,7 +268,7 @@ class BuildWidget(QWidget):
             self.populateTable(args[0])
 
         elif action == 'set-results':
-            item : Item = args[0].item
+            item: Item = args[0].item
             item.result = args[1]
             updateFieldsAfterRun([args[0], self])
 
