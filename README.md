@@ -31,6 +31,12 @@ This project uses the following libraries:
 - To export test cases to `.xlsl` files I use [openpyxl](https://openpyxl.readthedocs.io/en/stable/), version 3.1.5.
 - To bundle the program as an executable file: [PyInstaller](https://pyinstaller.org/en/stable/), version 6.10.0.
 
+You can use this command to install everything:
+
+```
+$ python3 -m pip install PyQt6 pyqtdarktheme openpyxl pyinstaller
+```
+
 The project was built and tested on Python 3.10.8 64-bits.
 
 # To bundle as an executable
@@ -38,7 +44,17 @@ The project was built and tested on Python 3.10.8 64-bits.
 Run the following: 
 
 ```
-pyinstaller --onefile -w -i res/Logo.ico -n VVT src/Main.py
+pyinstaller --onefile -w -i res/Logo.ico -n VVT src/Main.py --exclude PySide6
 ```
 
-*This is a work in progress.*
+The last exclude is optional, it's in case you also have installed PySide6 on your environment.
+
+# Developing on Linux
+
+To run the Python program in Linux (WSL), I had to install the following packages:
+
+```
+$ apt-get install ffmpeg libsm6 libxext6 libgl1-mesa-dev
+```
+
+*This project is a work in progress.*

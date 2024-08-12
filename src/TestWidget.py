@@ -164,7 +164,9 @@ class TestWidget(QWidget):
                 for arg in e.cmd:
                     detailMessage += str(arg) + " "
                 detailMessage += f'\nReturn code: {e.returncode}\nError output: {e.stderr.decode("utf-8")}'
-            
+            else:
+                detailMessage += str(e)
+                
             QMessageBox.critical(self, 'Fatal error while running test', 
                     f'A fatal error occurred. {detailMessage}')
             
