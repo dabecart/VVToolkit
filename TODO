@@ -11,3 +11,5 @@
 - Change the save icon (maybe add a dot) when changes are unsaved.
 - Be able to import a folder of scripts and add them automatically to the table.
 - Add autosave feature on temporary files.
+- Add a test run on BUILD mode to test the verification.
+- Add multiple conditions for tests.

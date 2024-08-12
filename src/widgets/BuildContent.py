@@ -12,7 +12,7 @@
 # **************************************************************************************************
 
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QTextEdit, QComboBox, QLineEdit, QPushButton, QFrame)
+                            QTextEdit, QComboBox, QLineEdit, QPushButton, QFrame, QSizePolicy)
 
 from PyQt6.QtCore import Qt, QSize
 
@@ -78,7 +78,7 @@ class BuildContent(QWidget):
         horizontalSeparator.setFrameShape(QFrame.Shape.HLine)
         horizontalSeparator.setFrameShadow(QFrame.Shadow.Sunken)
 
-        outputCommandLabel = QLabel("Output:")
+        outputCommandLabel = QLabel("Iteration output:")
         self.outputCmdIndexCombo = QComboBox()
         self.outputCmdIndexCombo.setStatusTip("Select which of the iterations to show.")
         self.outputCmdIndexCombo.setPlaceholderText("None")
@@ -118,14 +118,16 @@ class BuildContent(QWidget):
 
     def isUpdated(self):
         ret =   (self.outputCmdIndexCombo.count() == self.item.repetitions) \
-                and (self.inputCmdText.toPlainText() == self.item.runcode) \
-                and (self.item.result and self.outputCmdText.toPlainText() != "")
+                and (self.inputCmdText.toPlainText() == self.item.runcode)
         if not ret:
             return False
         
-        dummyTextEdit = QTextEdit()
-        dummyTextEdit.setText(self.item.result[int(self.outputCmdIndexCombo.currentText())].output)
-        return (dummyTextEdit.toPlainText() == self.outputCmdText.toPlainText())
+        if not self.item.result:
+            return self.outputCmdText.toPlainText() == ""
+        else:
+            dummyTextEdit = QTextEdit()
+            dummyTextEdit.setText(self.item.result[int(self.outputCmdIndexCombo.currentText())].output)
+            return (dummyTextEdit.toPlainText() == self.outputCmdText.toPlainText())
     
     def onOutputCmdIndexChanged(self, text):
         try:

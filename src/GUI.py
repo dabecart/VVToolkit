@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QPalette, QActionGroup
 
 from typing import Optional, List
+import os
 
 from DataFields import Item, TestDataFields
 import DataFields
@@ -279,45 +280,61 @@ class GUI(QMainWindow):
                 QMessageBox.warning(self, 'Save the file first', 
                                     'Save the file first before changing to test mode.')
                 # Maintain the same mode. Change the newly pressed button.
-                mode = self.currentMode
+                self.changeMenuBarWidgetButton(self.currentMode, True)
+                return
             else:
                 for it in self.items:
-                    if not it.hasBeenRun():
+                    if it.enabled and not it.hasBeenRun():
                         reply = QMessageBox.question(self, 'Run all tests', 
-                                'You have to run all tests on build mode before changing to test mode.\n'
+                                'You have to run all enabled tests on build mode before changing to test mode.\n'
                                 'Do you want to change to build mode?',
                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, 
                                 QMessageBox.StandardButton.Yes)
                         if reply == QMessageBox.StandardButton.Yes:
-                            return self.changeMode('build')
+                            self.changeMode('build')
+                            return
+                        else:
+                            # Maintain the same mode. Change the newly pressed button.
+                            self.changeMenuBarWidgetButton(self.currentMode, True)
+                            return
 
-        self.changeMenuBarWidgetButton(self.setupModeAction, False)
-        self.changeMenuBarWidgetButton(self.buildModeAction, False)
-        self.changeMenuBarWidgetButton(self.testModeAction, False)
+        self.changeMenuBarWidgetButton('setup', False)
+        self.changeMenuBarWidgetButton('build', False)
+        self.changeMenuBarWidgetButton('test',  False)
 
         match mode:
             case 'setup': 
                 self.centralWidget().setCurrentIndex(0)
                 self.currentWidget = self.setupWidget
-                self.changeMenuBarWidgetButton(self.setupModeAction, True)
+                self.changeMenuBarWidgetButton(mode, True)
             case 'build': 
                 self.centralWidget().setCurrentIndex(1)
                 self.currentWidget = self.buildWidget
                 self.buildWidget.runAction('populate-table', None, self.buildWidget.categoryCombo.currentText())
-                self.changeMenuBarWidgetButton(self.buildModeAction, True)
+                self.changeMenuBarWidgetButton(mode, True)
             case 'test':
                 self.centralWidget().setCurrentIndex(2)
                 self.currentWidget = self.testWidget
-                self.changeMenuBarWidgetButton(self.testModeAction, True)
+                self.changeMenuBarWidgetButton(mode, True)
             case None:
-                self.changeMenuBarWidgetButton(self.setupModeAction, None)
-                self.changeMenuBarWidgetButton(self.buildModeAction, None)
-                self.changeMenuBarWidgetButton(self.testModeAction,  None)
+                self.changeMenuBarWidgetButton('setup', None)
+                self.changeMenuBarWidgetButton('build', None)
+                self.changeMenuBarWidgetButton('test',  None)
 
         self.currentMode = mode
         return True
 
-    def changeMenuBarWidgetButton(self, action, selected: bool | None):
+    def changeMenuBarWidgetButton(self, mode, selected: bool | None):
+        match mode:
+            case 'setup': 
+                action = self.setupModeAction
+            case 'build': 
+                action = self.buildModeAction
+            case 'test':
+                action = self.testModeAction
+            case _:
+                return
+
         if selected is None:
             action.setEnabled(False)
         else:
@@ -378,6 +395,9 @@ class GUI(QMainWindow):
             self.items = itemsData[1]
             
             self.currentFile = fileName
+            
+            # The scripts must be on the same folder as the .vvf file.
+            Item.runningDirectory= os.path.dirname(fileName)
 
             self.changeMode('setup')
 

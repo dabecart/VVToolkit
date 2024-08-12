@@ -11,9 +11,9 @@
 # This project is licensed under the MIT License - see the LICENSE file for details.
 # **************************************************************************************************
 
+from PyQt6.QtWidgets import QTextEdit
 from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 from PyQt6.QtCore import Qt, QRegularExpression
-from PyQt6.QtWidgets import (QWidget, QTextEdit, QHBoxLayout)
 import re
 from typing import Optional
 

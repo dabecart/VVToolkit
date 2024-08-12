@@ -28,6 +28,7 @@ class CollapsibleBox(QWidget):
         self.config = config
         self.parent = parent
         self.content = contentWidget(self.item, self)
+        self.content.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
 
         self.header = QWidget()
         self.header.setStatusTip('Open this collapsible box.')

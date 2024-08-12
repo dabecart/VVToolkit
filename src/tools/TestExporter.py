@@ -12,8 +12,10 @@
 # **************************************************************************************************
 
 import os
+import shutil
 import re
-from shutil import copyfile
+import zipfile
+import xml.etree.ElementTree as ET
 
 import openpyxl
 import openpyxl.cell
@@ -24,15 +26,41 @@ from DataFields import Item, TestDataFields, TestResult
 
 from typing import List
 
+from PyQt6.QtCore import QFile, QIODevice
+from io import BytesIO
+
+# Don't remove this "unused" import, contains the resource images.
+import ResourcePacket
+
 def replacePlaceholders(filePath: str, testFields: TestDataFields, items: List[Item]):
-    # Load the Excel model workbook.
-    modelPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TestReportModel.xlsx")
-    modelWorkbook = openpyxl.load_workbook(modelPath)
-    # Select the worksheet.
-    modelSheet = modelWorkbook["VFR"]
+    # Load the Excel file from ResourcePacket.
+    qfile = QFile(':excel-model')
+    if not qfile.open(QIODevice.OpenModeFlag.ReadOnly):
+        raise IOError("Failed to open the embedded Excel file")
+
+    excelData = qfile.readAll()
+    qfile.close()
 
     # Duplicate the model into filePath.
-    copyfile(modelPath, filePath)
+    with open(filePath, 'wb') as f:
+        f.write(excelData)
+
+    # Convert to a BytesIO object
+    excelFileStream = BytesIO(excelData.data())
+
+    modelWorkbook = openpyxl.load_workbook(excelFileStream)
+    # Select the worksheet.
+    modelSheet = modelWorkbook["VFR"]
+    
+    # This does not work! And I really need it :(
+    # modelSheet.print_area = "A:B"
+    # Not even this works!
+    # modelSheet.print_area = "A1:B2"
+
+    # As I cannot set the columns as the print area, I'll set a random range inside the excel file.
+    # This will create the field inside the workbook.xml file contained in the .xlsx (an .xlsx is 
+    # basically a .zip file) and then I'll substitute it with "$A:$B" which is what i want. 
+
     destinyWorkbook = openpyxl.load_workbook(filePath)
     destinySheet = destinyWorkbook["VFR"]
 
@@ -96,6 +124,9 @@ def replacePlaceholders(filePath: str, testFields: TestDataFields, items: List[I
 
     # Save the modified destiny workbook.
     destinyWorkbook.save(filePath)
+
+    # Change the print area.
+    _updatePrintArea(filePath)
 
 def _deleteCellRange(cells):
     for row in cells:
@@ -198,3 +229,48 @@ def _evaluateVariable(code: str, args):
 
     # Remove all <> from the output because that will confound the substituteExcelVariable function.
     return re.sub(r'<.*?>', "", out)
+
+def _updatePrintArea(xlsxPath, newArea="VFR!$A:$B"):
+    # Create a temporary directory to extract files.
+    tempDir = "temp_xlsx"
+    if os.path.exists(tempDir):
+        shutil.rmtree(tempDir)
+    os.makedirs(tempDir)
+
+    # Extract the .xlsx file contents to the temporary directory.
+    with zipfile.ZipFile(xlsxPath, 'r') as zipFile:
+        zipFile.extractall(tempDir)
+
+    # Path to the workbook.xml file. This file contains the print area.
+    wbXmlPath = os.path.join(tempDir, 'xl', 'workbook.xml')
+
+    # Parse and modify the workbook.xml file.
+    tree = ET.parse(wbXmlPath)
+    root = tree.getroot()
+    namespaces = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+    # Find the definedName element with name="_xlnm.Print_Area".
+    fieldFound = False
+    for definedNameField in root.findall('.//ns:definedName', namespaces):
+        if definedNameField.get('name') == '_xlnm.Print_Area':
+            # Update its text to the new value.
+            definedNameField.text = newArea
+            fieldFound = True
+            break
+
+    if not fieldFound:
+        print("Set the print area on the excel model.")
+
+    # Write the modified XML back to workbook.xml.
+    tree.write(wbXmlPath, encoding='utf-8', xml_declaration=True)
+
+    # Save file with the modified content.
+    with zipfile.ZipFile(xlsxPath, 'w') as new_zip:
+        for foldername, _, filenames in os.walk(tempDir):
+            for filename in filenames:
+                file_path = os.path.join(foldername, filename)
+                arcname = os.path.relpath(file_path, tempDir)
+                new_zip.write(file_path, arcname)
+
+    # Cleanup the temporary directory.
+    shutil.rmtree(tempDir)

@@ -40,5 +40,7 @@
     <file alias="clear">clear.svg</file>
 
     <file alias="loading">loading-circle.svg</file>
+
+    <file alias="excel-model">TestReportModel.xlsx</file>
 </qresource>
 </RCC>

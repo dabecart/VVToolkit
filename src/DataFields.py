@@ -80,7 +80,7 @@ class ResultCommand:
 
 @dataclass
 class ValidationCommand:
-    operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">=", 'contain', "not contain"]
+    operators: ClassVar[List[str]]  = ["==", "<>", "<", ">", "<=", ">=", "contain", "not contain"]
 
     operation: int      = field(default=Operation.SAME)
     operator: str       = field(default='==')
@@ -227,6 +227,8 @@ class ValidationCommand:
 
 @dataclass(eq=True)
 class Item:
+    runningDirectory : ClassVar[str]    = ""
+
     id: int                             = field(default=-1)
     name: str                           = field(default="Undeclared")
     category: str                       = field(default="Undetermined")
@@ -274,13 +276,33 @@ class Item:
         for result, test in zip(self.result, self.testOutput):
             self.testResult = self.validationCmd.validate(result, test, self.testResult)
 
+    # May throw a CalledProcessError exception in case the command is not OK.
     def _execute(self, resultOutputSave):
         commandArgs = shlex.split(self.runcode)
+        # So that the windowed application doesn't open a terminal to run the code.
+        # Taken from here:
+        # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
+        startupInfo = subprocess.STARTUPINFO()
+        startupInfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         for _ in range(self.repetitions):
             tOfExec = datetime.now().strftime("%d/%m/%Y %H:%M:%S.%f")
             startTime = perf_counter()
-            runResult = subprocess.run(commandArgs, stdout=subprocess.PIPE)
+            runResult = subprocess.run(commandArgs,
+                                       stdout   = subprocess.PIPE, 
+                                       stderr   = subprocess.PIPE,
+                                       cwd      = Item.runningDirectory,
+                                       startupinfo = startupInfo)
             executionTime = perf_counter() - startTime
+    
+            # Taken from here: 
+            # https://stackoverflow.com/questions/24849998/how-to-catch-exception-output-from-python-subprocess-check-output
+            if runResult.stderr:
+                raise subprocess.CalledProcessError(
+                    returncode = runResult.returncode,
+                    cmd = runResult.args,
+                    stderr = runResult.stderr
+                )
+            
             resultOutputSave.append(ResultCommand(output=runResult.stdout.decode('utf-8'),
                                                   returnCode=runResult.returncode,
                                                   executionTime=executionTime,

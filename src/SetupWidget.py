@@ -13,7 +13,7 @@
 
 from PyQt6.QtWidgets import (
     QTableWidget, QCheckBox, QVBoxLayout, QWidget, QHeaderView,
-    QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton, QTableWidgetItem
+    QLabel, QFormLayout, QSplitter, QHBoxLayout, QPushButton, QTableWidgetItem, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QEvent, QTimer, QSize
 from PyQt6.QtGui import QIntValidator
@@ -45,7 +45,8 @@ class SetupWidget(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Create the main splitter
-        self.splitter = QSplitter(Qt.Orientation.Vertical)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        self.splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.splitter)
 
         # Create a widget for the buttons
@@ -71,6 +72,7 @@ class SetupWidget(QWidget):
 
         # Create the table widget
         self.tableWidget = QTableWidget()
+        # self.tableWidget.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding)
         
         # Create a vertical layout for the table and buttons
         tableLayout = QVBoxLayout()
@@ -79,13 +81,7 @@ class SetupWidget(QWidget):
 
         tableContainer = ContainerWidget()
         tableContainer.setLayout(tableLayout)
-
         self.splitter.addWidget(tableContainer)
-        
-        # Set table properties
-        self.tableWidget.verticalHeader().setVisible(False)  # Remove row numbers
-        # self.tableWidget.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        # self.tableWidget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
         # Enable sorting
         self.tableWidget.setSortingEnabled(True)
@@ -102,6 +98,11 @@ class SetupWidget(QWidget):
         self.tableWidget.resizeEvent = self.onResizeWindow
         self.tableWidget.viewport().installEventFilter(self)
 
+        # Set table properties
+        self.tableWidget.verticalHeader().setVisible(False)  # Remove row numbers
+        # self.tableWidget.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        # self.tableWidget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
         # Create the details widget with a header
         self.detailsWidget = ContainerWidget()
         self.splitter.addWidget(self.detailsWidget)
@@ -109,7 +110,7 @@ class SetupWidget(QWidget):
         # Create a form layout for the details widget
         self.formLayout = QFormLayout()
         self.detailsWidget.setLayout(self.formLayout)
-
+        self.detailsWidget.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Expanding)
         # Initially hide the details widget
         self.detailsWidget.hide()
 
