@@ -1,0 +1,15 @@
++ Add icons with the especial TrackableIcon class.
++ Add formatting rules to the model excel so that there is some more color and bold stuff.
++ Expand justification sentences.
++ Add time deltas for the results.
++ Add a rotating circle bellow CollapsibleBoxes while running (?)
++ Add help window.
++ Add fields to enter the test fields (name, project...)
+
+- Add undo/redo of single cells in table.
+- Add a loading bar with an stop button to stop the build and test process.
+- Change the save icon (maybe add a dot) when changes are unsaved.
+- Be able to import a folder of scripts and add them automatically to the table.
+- Add autosave feature on temporary files.
+- Add a test run on BUILD mode to test the verification.
+- Add multiple conditions for tests.

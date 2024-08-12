@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg
+   fill="#000000"
+   width="800px"
+   height="800px"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="clear.svg"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25, custom)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.01625"
+     inkscape:cx="400.492"
+     inkscape:cy="400"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <g
+     id="g2">
+    <path
+       id="path1"
+       d="M 137.908 107.73925 L 107.73925 137.908 L 183.163 213.333 L 107.73925 288.758 L 137.908 318.928 L 213.333 243.50175 L 288.758 318.928 L 318.928 288.758 L 243.50175 213.333 L 318.928 137.908 L 288.758 107.73925 L 213.333 183.163 L 137.908 107.73925 z "
+       transform="translate(42.667 42.667)"
+       style="fill:#e51760;fill-opacity:1" />
+    <path
+       id="path2"
+       d="M 213.333 0.0005 C 95.512372 0.0005 0.0005 95.512372 0.0005 213.333 C 0.0005 331.15363 95.512372 426.66675 213.333 426.66675 C 331.15363 426.66675 426.66675 331.15363 426.66675 213.333 C 426.66675 156.75354 404.19072 102.49197 364.183 62.48425 C 324.17528 22.476529 269.91246 0.0005 213.333 0.0005 z M 213.333 42.66675 C 307.5895 42.66675 384.0005 119.0765 384.0005 213.333 C 384.0005 307.5895 307.5895 384.0005 213.333 384.0005 C 119.0765 384.0005 42.66675 307.5895 42.66675 213.333 C 42.66675 119.0765 119.0765 42.66675 213.333 42.66675 z "
+       transform="translate(42.667 42.667)" />
+  </g>
+</svg>

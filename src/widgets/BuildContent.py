@@ -1,0 +1,186 @@
+# **************************************************************************************************
+# @file BuildContent.py
+# @brief Content and header of the CollapsileBox for the build mode. 
+#
+# @project   VVToolkit
+# @version   1.0
+# @date      2024-08-04
+# @author    @dabecart
+#
+# @license
+# This project is licensed under the MIT License - see the LICENSE file for details.
+# **************************************************************************************************
+
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+                            QTextEdit, QComboBox, QLineEdit, QPushButton, QFrame, QSizePolicy)
+
+from PyQt6.QtCore import Qt, QSize
+
+from DataFields import Item, Operation, ValidationCommand
+from widgets.CodeTextField import CodeTextField
+from widgets.ContainerWidget import ContainerWidget
+
+from Icons import createIcon
+
+class BuildContent(QWidget):
+    def __init__(self, item: Item, parent = None) -> None:
+        super().__init__(parent)
+
+        self.item = item
+        self.parent = parent
+
+        contentLayout = QVBoxLayout(self)
+        contentLayout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        inputCommandLabel = QLabel("Input:")
+        self.inputCmdText = CodeTextField()
+        self.inputCmdText.setText(self.item.runcode)
+        self.inputCmdText.setReadOnly(True)
+        self.inputCmdText.setStatusTip("The code that runs for this test case.")
+        
+        setVerificationLabel = QLabel("Verification Mode:")
+        self.verificationModeCombo = QComboBox()
+        self.verificationModeCombo.setStatusTip('Select which type of verification will be used for this test case.')
+        self.verificationModeCombo.setFixedHeight(30)
+        self.verificationModeCombo.addItems(Operation.operations)
+        self.verificationModeCombo.setCurrentIndex(self.item.validationCmd.operation)
+        self.verificationModeCombo.currentTextChanged.connect(self.onCheckingModeChanged)
+
+        self.operatorCombo = QComboBox()
+        self.operatorCombo.setStatusTip('Select the operation for the validation process.')
+        self.operatorCombo.setFixedHeight(30)
+        self.operatorCombo.addItems(ValidationCommand.operators)
+        try:
+            self.operatorCombo.setCurrentIndex(ValidationCommand.operators.index(self.item.validationCmd.operator))
+        except ValueError:
+            print(f"Item {self.item.id} has an invalid operator {self.item.validationCmd.operator}")
+        self.operatorCombo.currentTextChanged.connect(self.onOperatorChanged)
+
+        self.operatorValueEdit = QLineEdit()
+        self.operatorValueEdit.setStatusTip('The value used for the validation process.')
+        self.operatorValueEdit.textChanged.connect(self.onOperatorValueChanged)
+        self.operatorValueEdit.setText(self.item.validationCmd.operatorVal)
+
+        if self.item.validationCmd.operation == Operation.SAME:
+            self.operatorCombo.setVisible(False)
+            self.operatorValueEdit.setVisible(False)
+
+        setVerificationWidget = ContainerWidget()
+        checkModeLayout = QHBoxLayout(setVerificationWidget)
+        checkModeLayout.setContentsMargins(0,0,0,0)
+        checkModeLayout.addWidget(setVerificationLabel)
+        checkModeLayout.addWidget(self.verificationModeCombo)
+        checkModeLayout.addWidget(self.operatorCombo)
+        checkModeLayout.addWidget(self.operatorValueEdit)
+
+        # Visual separator (horizontal line).
+        horizontalSeparator = QFrame(self)
+        horizontalSeparator.setFrameShape(QFrame.Shape.HLine)
+        horizontalSeparator.setFrameShadow(QFrame.Shadow.Sunken)
+
+        outputCommandLabel = QLabel("Iteration output:")
+        self.outputCmdIndexCombo = QComboBox()
+        self.outputCmdIndexCombo.setStatusTip("Select which of the iterations to show.")
+        self.outputCmdIndexCombo.setPlaceholderText("None")
+        self.outputCmdIndexCombo.setMinimumHeight(30)
+        self.outputCmdIndexCombo.setMinimumWidth(self.outputCmdIndexCombo.sizeHint().width() + 16)
+        self.outputCmdIndexCombo.addItems([str(i) for i in range(self.item.repetitions)])
+        if self.item.hasBeenRun():
+            self.outputCmdIndexCombo.setCurrentIndex(0)
+        else:
+            self.outputCmdIndexCombo.setCurrentIndex(-1)
+            self.outputCmdIndexCombo.setEnabled(False)
+        self.outputCmdIndexCombo.currentTextChanged.connect(self.onOutputCmdIndexChanged)
+        self.outputReturnValue = QLabel("")
+
+        outputHeader = ContainerWidget()
+        outputHeaderLayout = QHBoxLayout(outputHeader)
+        outputHeaderLayout.setContentsMargins(0,0,0,0)
+        outputHeaderLayout.addWidget(outputCommandLabel)
+        outputHeaderLayout.addWidget(self.outputCmdIndexCombo)
+        outputHeaderLayout.addStretch()
+        outputHeaderLayout.addWidget(self.outputReturnValue)
+
+        self.outputCmdText = QTextEdit()
+        self.outputCmdText.setStatusTip('The output generated by this test case.')
+        if self.item.hasBeenRun():
+            # This will update the text on the output cmd.
+            self.outputCmdText.setText(self.item.result[0].output)
+            self.outputReturnValue.setText(f"Return: {self.item.result[0].returnCode}\nExecution time: {self.item.result[0].executionTime:.2f} ms")
+        self.outputCmdText.setReadOnly(True)
+
+        contentLayout.addWidget(inputCommandLabel)
+        contentLayout.addWidget(self.inputCmdText)
+        contentLayout.addWidget(setVerificationWidget)
+        contentLayout.addWidget(horizontalSeparator)
+        contentLayout.addWidget(outputHeader)
+        contentLayout.addWidget(self.outputCmdText)
+
+    def isUpdated(self):
+        ret =   (self.outputCmdIndexCombo.count() == self.item.repetitions) \
+                and (self.inputCmdText.toPlainText() == self.item.runcode)
+        if not ret:
+            return False
+        
+        if not self.item.result:
+            return self.outputCmdText.toPlainText() == ""
+        else:
+            dummyTextEdit = QTextEdit()
+            dummyTextEdit.setText(self.item.result[int(self.outputCmdIndexCombo.currentText())].output)
+            return (dummyTextEdit.toPlainText() == self.outputCmdText.toPlainText())
+    
+    def onOutputCmdIndexChanged(self, text):
+        try:
+            index = int(text)
+        except ValueError:
+            return
+        
+        result = self.item.result[index]
+        self.outputCmdText.setText(result.output)
+        self.outputReturnValue.setText(f"Return: {result.returnCode}\nExecution time: {result.executionTime:.2f} ms")
+
+    def onCheckingModeChanged(self, text):
+        if text == "Conditional output":
+            self.operatorCombo.setVisible(True)
+            self.operatorValueEdit.setVisible(True)
+            self.item.validationCmd.operation = Operation.COMPARISON
+        else:
+            self.operatorCombo.setVisible(False)
+            self.operatorValueEdit.setVisible(False)
+            self.item.validationCmd.operation = Operation.SAME
+
+    def onOperatorChanged(self, text):
+        self.item.validationCmd.operator = text
+
+    def onOperatorValueChanged(self):
+        self.item.validationCmd.operatorVal = self.operatorValueEdit.text()
+
+class BuildHeader(QWidget):
+    def __init__(self, parent = None) -> None:
+        super().__init__(parent)
+
+        self.parent = parent
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0,0,0,0)
+
+        self.runButton = QPushButton()
+        self.runButton.setStatusTip('Runs this test case.')
+        icon = createIcon(':run', self.parent.config)
+        icon.setAssociatedWidget(self.runButton)
+        self.runButton.setIcon(icon)
+        self.runButton.setFixedSize(35, 35)
+        self.runButton.setIconSize(QSize(30,30))
+        self.runButton.clicked.connect(lambda: self.parent.parent.runAction('run-item', 'undo', self.parent.content))
+
+        self.clearButton = QPushButton()
+        self.clearButton.setStatusTip('Clears the results of this test case.')
+        icon = createIcon(':clear', self.parent.config)
+        icon.setAssociatedWidget(self.clearButton)
+        self.clearButton.setIcon(icon)
+        self.clearButton.setFixedSize(35, 35)
+        self.clearButton.setIconSize(QSize(30,30))
+        self.clearButton.clicked.connect(lambda: self.parent.parent.runAction('clear-item', 'undo', self.parent.content))
+
+        layout.addWidget(self.runButton)
+        layout.addWidget(self.clearButton)

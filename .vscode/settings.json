@@ -1,0 +1,16 @@
+{
+    "cSpell.languageSettings": [
+        {
+          "languageId": "python",
+          "includeRegExpList": [
+              "/#.*/",
+             "/('''|\"\"\")[^\\1]+?\\1/g",
+              "strings"
+          ]
+        },
+    ],
+
+    "cSpell.words": [
+        "Pixmap"
+    ]
+}
