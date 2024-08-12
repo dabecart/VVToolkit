@@ -18,7 +18,7 @@ If you chose to import a test result, you'll enter [TEST mode](#importing-test-r
 
 You can also change the **color theme** of the app by clicking Settings > Program settings (`Ctrl + R`) and selecting `Light` mode. 
 
-![Light mode](images/lightMode.png)
+![Light mode](images/lightmode.png)
 
 
 ## <img src="images/mode-setup.png" width="50"/> SETUP Mode 
@@ -96,7 +96,7 @@ If you want to start another test, first [export it](#exporting-test-results) an
 
 ![Test3](images/testWindow3.png)
 
-Each box will have a symbol indicating the result of the test. An extensive explanation can be found by opening the box.
+Each box will have a symbol indicating the result of the test. An extensive explanation can be found by opening the box. You can also check the result of each iteration by selecting its number of the `Iteration output` combo. The little colored dot on the left of the number indicates the result of the iteration.
 
 ![Test4](images/testWindow4.png)
 
