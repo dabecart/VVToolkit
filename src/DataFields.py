@@ -19,6 +19,7 @@ import shlex    # To easily parse the arguments for a console.
 from time import perf_counter
 from ast import literal_eval
 from re import sub
+import os
 
 from datetime import datetime
 
@@ -279,20 +280,30 @@ class Item:
     # May throw a CalledProcessError exception in case the command is not OK.
     def _execute(self, resultOutputSave):
         commandArgs = shlex.split(self.runcode)
-        # So that the windowed application doesn't open a terminal to run the code.
+        # So that the windowed application doesn't open a terminal to run the code on Windows (nt).
         # Taken from here:
         # https://code.activestate.com/recipes/409002-launching-a-subprocess-without-a-console-window/
-        startupInfo = subprocess.STARTUPINFO()
-        startupInfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        if os.name == 'nt':
+            startupInfo = subprocess.STARTUPINFO()
+            startupInfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
         for _ in range(self.repetitions):
             tOfExec = datetime.now().strftime("%d/%m/%Y %H:%M:%S.%f")
-            startTime = perf_counter()
-            runResult = subprocess.run(commandArgs,
-                                       stdout   = subprocess.PIPE, 
-                                       stderr   = subprocess.PIPE,
-                                       cwd      = Item.runningDirectory,
-                                       startupinfo = startupInfo)
-            executionTime = perf_counter() - startTime
+            if os.name == 'nt': 
+                startTime = perf_counter()
+                runResult = subprocess.run(commandArgs,
+                                        stdout   = subprocess.PIPE, 
+                                        stderr   = subprocess.PIPE,
+                                        cwd      = Item.runningDirectory,
+                                        startupinfo = startupInfo)
+                executionTime = perf_counter() - startTime
+            else:
+                startTime = perf_counter()
+                runResult = subprocess.run(commandArgs,
+                                        stdout   = subprocess.PIPE, 
+                                        stderr   = subprocess.PIPE,
+                                        cwd      = Item.runningDirectory)
+                executionTime = perf_counter() - startTime
     
             # Taken from here: 
             # https://stackoverflow.com/questions/24849998/how-to-catch-exception-output-from-python-subprocess-check-output
