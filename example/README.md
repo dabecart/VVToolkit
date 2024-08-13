@@ -1,6 +1,6 @@
 # How to use the VVT (Validation and Verification Toolkit) program
 
-## <img src="images/Logo.png" width="50"/> First steps
+## <img src="images/Logo.png" width="40"/> First steps
 
 On execution, you'll see something similar to this.
 
@@ -21,7 +21,7 @@ You can also change the **color theme** of the app by clicking Settings > Progra
 ![Light mode](images/lightmode.png)
 
 
-## <img src="images/mode-setup.png" width="50"/> SETUP Mode 
+## <img src="images/mode-setup.png" width="40"/> SETUP Mode 
 
 On **SETUP** mode you can create a list of all the individual tests that will conform your project.
 
@@ -49,7 +49,7 @@ You may save your progress anytime by clicking File > Save or `Ctrl + S`.
 
 
 
-## <img src="images/mode-build.png" width="50"/> BUILD Mode
+## <img src="images/mode-build.png" width="40"/> BUILD Mode
 
 On **BUILD** mode you specify which conditions are to be met for each test to be satisfactory.
 
@@ -80,7 +80,7 @@ If an error were to occur, you'll get a warning window with the error code. Try 
 
 
 
-## <img src="images/mode-test.png" width="50"/> TEST Mode
+## <img src="images/mode-test.png" width="40"/> TEST Mode
 
 On **TEST** mode you will run all tests on sequence and without interruption. This will generate a report you'll be able to export to a save file (`.vvt`) or to an Excel file (`.xlsl`). The last one can be printed or exported to PDF format.
 
@@ -100,11 +100,11 @@ Each box will have a symbol indicating the result of the test. An extensive expl
 
 ![Test4](images/testWindow4.png)
 
-### Importing test results
+## <img src="images/file-export.png" width="40"/> Importing test results
 
 This mode is read-only. It's only used to visualize on the program a previous test result. It still allows you to export it again, as either a `.vvt` or `.xlsx` file.
 
-## Exporting test results
+## <img src="images/file-import.png" width="40"/> Exporting test results
 
 Once your test has been run, **export the report** (saving won't work!) by pressing File >  Export test results.
 
