@@ -100,11 +100,11 @@ Each box will have a symbol indicating the result of the test. An extensive expl
 
 ![Test4](images/testWindow4.png)
 
-## <img src="images/file-export.png" width="40"/> Importing test results
+## <img src="images/file-import.png" width="40"/> Importing test results
 
 This mode is read-only. It's only used to visualize on the program a previous test result. It still allows you to export it again, as either a `.vvt` or `.xlsx` file.
 
-## <img src="images/file-import.png" width="40"/> Exporting test results
+## <img src="images/file-export.png" width="40"/> Exporting test results
 
 Once your test has been run, **export the report** (saving won't work!) by pressing File >  Export test results.
 

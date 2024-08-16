@@ -1,15 +1,8 @@
-<!-- Version 1.0.0-alpha -->
-+ Add icons with the especial TrackableIcon class.
-+ Add formatting rules to the model excel so that there is some more color and bold stuff.
-+ Expand justification sentences.
-+ Add time deltas for the results.
-+ Add a rotating circle bellow CollapsibleBoxes while running (?)
-+ Add help window.
-+ Add fields to enter the test fields (name, project...)
+# The VV Toolkit TODO List
 
-<!--  Version 1.0.1-alpha-->
+##  Version 1.0.1-beta
 - Add undo/redo of single cells in table.
-- Traverse the table using Enter and Tab.
+- Traverse the table using Enter and Tab like Excel.
 - Add a loading bar with an stop button to stop the build and test process.
 - Change the save icon (maybe add a dot) when changes are unsaved.
 - Be able to import a folder of scripts and add them automatically to the table.
@@ -18,3 +11,12 @@
 - Add multiple conditions for tests.
 - Give the possibility to import your own excel model (?)
 - Add a configuration option to change the cwd.
+
+## Version 1.0.0-alpha
++ Add icons with the especial TrackableIcon class.
++ Add formatting rules to the model excel so that there is some more color and bold stuff.
++ Expand justification sentences.
++ Add time deltas for the results.
++ Add a rotating circle bellow CollapsibleBoxes while running (?)
++ Add help window.
++ Add fields to enter the test fields (name, project...)
